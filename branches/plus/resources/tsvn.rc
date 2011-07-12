@@ -1,0 +1,7 @@
+tsvn_menucheckout ICON menucheckout.ico
+tsvn_menucleanup ICON menucleanup.ico
+tsvn_menucommit ICON menucommit.ico
+tsvn_menuimport ICON menuimport.ico
+tsvn_menulog ICON menulog.ico
+tsvn_menurepobrowse ICON menurepobrowse.ico
+tsvn_menuupdate ICON menuupdate.ico

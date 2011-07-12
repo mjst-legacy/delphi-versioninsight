@@ -1,0 +1,61 @@
+package HgIDE;
+
+{$R *.res}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO ON}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$LIBSUFFIX '150'}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  designide,
+  vclimg;
+
+contains
+  HgClient in 'HgClient.pas',
+  HgIDEClient in 'HgIDEClient.pas',
+  HgIDEHistory in 'HgIDEHistory.pas',
+  HgAddInOptionsFrame in 'HgAddInOptionsFrame.pas' {frmHgTestsOptions: TFrame},
+  HgIDEAddInOptions in 'HgIDEAddInOptions.pas',
+  HgIDEConst in 'HgIDEConst.pas',
+  HgIDEMenus in 'HgIDEMenus.pas',
+  HgIDETypes in 'HgIDETypes.pas',
+  HgIDEUtils in 'HgIDEUtils.pas',
+  HgUIConst in 'HgUIConst.pas',
+  HgUITypes in 'HgUITypes.pas',
+  HgUIUtils in 'HgUIUtils.pas',
+  HgClientProgress in 'HgClientProgress.pas' {HgProgressDialog},
+  HgIDELog in 'HgIDELog.pas',
+  HgClientLog in 'HgClientLog.pas' {HgLogFrame: TFrame},
+  HgClientRecentComments in 'HgClientRecentComments.pas' {RecentCommentsDialog},
+  HgImages in 'HgImages.pas' {HgImageModule: TDataModule},
+  HgTree in 'HgTree.pas',
+  HgClientCommitFrame in 'HgClientCommitFrame.pas' {HgCommitFrame: TFrame},
+  HgIDECommit in 'HgIDECommit.pas',
+  HgIDEMessageView in 'HgIDEMessageView.pas',
+  HgIDECheckout in 'HgIDECheckout.pas',
+  HgClientCheckout in 'HgClientCheckout.pas' {HgCheckoutDialog},
+  HgClientProjectSelect in 'HgClientProjectSelect.pas' {HgProjectSelectDialog},
+  HgClientUpdate in 'HgClientUpdate.pas' {HgUpdateDialog};
+
+end.
+

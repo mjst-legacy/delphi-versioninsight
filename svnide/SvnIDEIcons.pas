@@ -51,13 +51,18 @@ procedure RegisterImages;
   const
     sLibSvnClientDll = 'libsvn_client-1.dll';
   var
-    Key: string;
+    S, Key: string;
     RegIniFile: TRegIniFile;
+    Services: IOTAServices;
   begin
     Key := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey;
     RegIniFile := TRegIniFile.Create(Key);
     try
-      Result := RegIniFile.ReadString('Subversion', 'SvnDllDir', '');
+      if BorlandIDEServices.GetService(IOTAServices, Services) then
+        S := IncludeTrailingPathDelimiter(Services.GetRootDirectory) + 'bin\subversion'
+      else
+        S := '';
+      Result := RegIniFile.ReadString('Subversion', 'SvnDllDir', S);
     finally
       RegIniFile.Free;
     end;

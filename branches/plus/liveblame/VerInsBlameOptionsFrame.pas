@@ -60,6 +60,9 @@ type
     ColorDialog: TColorDialog;
     btnSaveAs: TButton;
     btnRename: TButton;
+    cbShowRevisionColorBar: TCheckBox;
+    cbShowDateColorBar: TCheckBox;
+    cbShowUserColorBar: TCheckBox;
     procedure ListBox1Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure btnDeleteClick(Sender: TObject);
@@ -240,6 +243,13 @@ begin
 
   ASettings.ShowUserInfoText := cbShowUserText.Checked;
   ASettings.ShowUserInfoColor := cbShowUserColor.Checked;
+  ASettings.ColorBarOrderList.Clear;
+  if cbShowRevisionColorBar.Checked then
+    ASettings.ColorBarOrderList.Add(Pointer(1));
+  if cbShowDateColorBar.Checked then
+    ASettings.ColorBarOrderList.Add(Pointer(2));
+  if cbShowUserColorBar.Checked then
+    ASettings.ColorBarOrderList.Add(Pointer(3));
 end;
 
 constructor TfrmVerInsBlameOptions.Create(AOwner: TComponent);
@@ -369,6 +379,9 @@ begin
   cbShowUserText.Checked := ASettings.ShowUserInfoText;
   cbShowUserColor.Checked := ASettings.ShowUserInfoColor;
   UpdateUserColors(ASettings);
+  cbShowRevisionColorBar.Checked := ASettings.ColorBarOrderList.IndexOf(Pointer(1)) <> -1;
+  cbShowDateColorBar.Checked := ASettings.ColorBarOrderList.IndexOf(Pointer(2)) <> -1;
+  cbShowUserColorBar.Checked := ASettings.ColorBarOrderList.IndexOf(Pointer(3)) <> -1;
 end;
 
 procedure TfrmVerInsBlameOptions.UpdateButtonState;

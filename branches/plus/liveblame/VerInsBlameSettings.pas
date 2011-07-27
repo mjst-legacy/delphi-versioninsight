@@ -530,6 +530,17 @@ begin
   RegIniFile := TRegIniFile.Create(FKey);
   try
     //Clear;
+    Cnt := RegIniFile.ReadInteger(AKeyName, 'ColorBarOrderListCount', -1);
+    if Cnt >= 0 then
+    begin
+      ASettings.ColorBarOrderList.Clear;
+      for I := 0 to Pred(Cnt) do
+      begin
+        Int := RegIniFile.ReadInteger(AKeyName, Format('ColorBarOrderList%d', [I]), -1);
+        if (Int >= 1) and (Int <= 3) and (ASettings.ColorBarOrderList.IndexOf(Pointer(Int)) = -1) then
+          ASettings.ColorBarOrderList.Add(Pointer(Int));
+      end;
+    end;
     ASettings.DateEndColor := RegIniFile.ReadInteger(AKeyName, 'DateEndColor', ASettings.DateEndColor);
     ASettings.DateFormat := RegIniFile.ReadString(AKeyName, 'DateFormat', ASettings.DateFormat);
     ASettings.DateStartColor := RegIniFile.ReadInteger(AKeyName, 'DateStartColor', ASettings.DateStartColor);
@@ -603,6 +614,9 @@ var
 begin
   RegIniFile := TRegIniFile.Create(FKey);
   try
+    RegIniFile.WriteInteger(AKeyName, 'ColorBarOrderListCount', ASettings.ColorBarOrderList.Count);
+    for I := 0 to Pred(ASettings.ColorBarOrderList.Count) do
+      RegIniFile.WriteInteger(AKeyName, Format('ColorBarOrderList%d', [I]), Integer(ASettings.ColorBarOrderList[I]));
     RegIniFile.WriteInteger(AKeyName, 'DateEndColor', ASettings.DateEndColor);
     RegIniFile.WriteString(AKeyName, 'DateFormat', ASettings.DateFormat);
     RegIniFile.WriteInteger(AKeyName, 'DateStartColor', ASettings.DateStartColor);

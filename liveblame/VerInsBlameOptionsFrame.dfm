@@ -63,7 +63,7 @@ object frmVerInsBlameOptions: TfrmVerInsBlameOptions
     object cbShowUserText: TCheckBox
       Left = 8
       Top = 240
-      Width = 121
+      Width = 62
       Height = 17
       Caption = 'Text'
       Checked = True
@@ -103,7 +103,7 @@ object frmVerInsBlameOptions: TfrmVerInsBlameOptions
     object cbShowRevisionText: TCheckBox
       Left = 8
       Top = 72
-      Width = 121
+      Width = 62
       Height = 17
       Caption = 'Text'
       Checked = True
@@ -113,7 +113,7 @@ object frmVerInsBlameOptions: TfrmVerInsBlameOptions
     object cbShowDateText: TCheckBox
       Left = 8
       Top = 136
-      Width = 121
+      Width = 62
       Height = 17
       Caption = 'Text'
       Checked = True
@@ -220,6 +220,30 @@ object frmVerInsBlameOptions: TfrmVerInsBlameOptions
       Caption = 'Delete'
       TabOrder = 14
       OnClick = btnDeleteUserClick
+    end
+    object cbShowRevisionColorBar: TCheckBox
+      Left = 76
+      Top = 72
+      Width = 97
+      Height = 17
+      Caption = 'Color Bar'
+      TabOrder = 15
+    end
+    object cbShowDateColorBar: TCheckBox
+      Left = 76
+      Top = 136
+      Width = 97
+      Height = 17
+      Caption = 'Color Bar'
+      TabOrder = 16
+    end
+    object cbShowUserColorBar: TCheckBox
+      Left = 76
+      Top = 240
+      Width = 97
+      Height = 17
+      Caption = 'Color Bar'
+      TabOrder = 17
     end
   end
   object Button1: TButton

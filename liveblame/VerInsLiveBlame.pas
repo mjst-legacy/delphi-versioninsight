@@ -484,6 +484,8 @@ type
 
   TLiveBlameData = TGenericLiveBlameData;
 
+  TOnGetLineColorEvent = function(ALine: Integer; AColorIndex: Integer): TColor of object;
+
   TLiveBlameEditorPanel = class(TPanel)
   private
     FTimer: TTimer;
@@ -538,10 +540,13 @@ type
     procedure UpdateLineHistory(ASourceEditor: IOTASourceEditor);
     procedure HandleDiffThreadReady(Sender: TObject);
     function DoGetRevisionColor(ALineHistoryRevision: TJVCSLineHistoryRevision): TRevisionColor;
+    function GetLineColor(ALine: Integer; AColorIndex: Integer): TColor;
     function GetNextColor: TColor;
     procedure UpdateGutterWidth;
     procedure OnTimer(Sender: TObject);
     procedure OnCheckTimer(Sender: TObject);
+    procedure PaintColorBar(ACanvas: TCanvas; ARect: TRect; ALinesCount,
+      APenColor, ABackGroundColor: TColor; AOnGetLineColor: TOnGetLineColorEvent; AColorIndex: Integer);
     procedure PaintBoxPaint(Sender: TObject);
     procedure WMMyShow(var Msg: TMessage); message WM_BLAME_SHOW;
     procedure WMUpdateWnd(var Msg: TMessage); message WM_BLAME_UPDATE;
@@ -1780,6 +1785,28 @@ begin
   end;
 end;
 
+function TLiveBlameEditorPanel.GetLineColor(ALine, AColorIndex: Integer): TColor;
+var
+  RevisionColor: TRevisionColor;
+begin
+  Result := clNone;
+  if AColorIndex in [1, 2, 3] then
+  begin
+    if (FLiveBlameData.FLines.Count > ALine) then
+      RevisionColor := DoGetRevisionColor(FLiveBlameData.FLines[ALine])
+    else
+      RevisionColor := DoGetRevisionColor(nil);
+    if Assigned(RevisionColor) then
+    begin
+      case AColorIndex of
+        1: Result := RevisionColor.RevisionColor;
+        2: Result := RevisionColor.DateColor;
+        3: Result := RevisionColor.UserColor;
+      end;
+    end;
+  end;
+end;
+
 function TLiveBlameEditorPanel.GetNextColor: TColor;
 begin
   case (14 - FColorList.Count mod 15) of
@@ -1877,10 +1904,43 @@ begin
 end;
 
 procedure TLiveBlameEditorPanel.HandleOnClick(Sender: TObject);
+var
+  PT: TPoint;
+  EditView: IOTAEditView;
+  EditPos: TOTAEditPos;
+  NewTopRow: Integer;
 begin
   if (Cursor = crHandPoint) and Assigned(FOnRevisionClick) and
     (FLastHighlightedRevisionIDStr <> '') then
-    FOnRevisionClick(Self, FLastHighlightedRevisionIDStr);
+    FOnRevisionClick(Self, FLastHighlightedRevisionIDStr)
+  else
+  if (Cursor <> crHandPoint) and (FSettings.ColorBarOrderList.Count > 0) and
+    GetCursorPos(PT) then
+  begin
+    PT := ScreenToClient(PT);
+    if PT.X < FSettings.ColorBarOrderList.Count * 8 then
+    begin
+      EditView := (BorlandIDEServices as IOTAEditorServices).TopView;
+      if Assigned(EditView) then
+      begin
+        EditPos := EditView.CursorPos;
+        EditPos.Line := (PT.Y * EditView.Position.LastRow) div FPaintBox.Height;
+        EditView.CursorPos := EditPos;
+        if (EditPos.Line < EditView.TopRow) or (EditPos.Line > EditView.BottomRow) then
+        begin
+          NewTopRow := EditPos.Line - (EditView.BottomRow - EditView.TopRow) div 2;
+          if NewTopRow < 1 then
+            NewTopRow := 1
+          else
+          if NewTopRow > EditView.Position.LastRow then
+            NewTopRow := EditView.Position.LastRow;
+          EditView.SetTopLeft(NewTopRow, 1);
+        end;
+        EditView.Paint;
+        FPaintBox.Invalidate;
+      end;
+    end;
+  end;
 end;
 
 procedure TLiveBlameEditorPanel.HandlePopupMenu(Sender: TObject);
@@ -2033,7 +2093,10 @@ begin
     Visible := TSpeedButton(Sender).Down
   else
   if Sender is TAction then
+  begin
+    TAction(Sender).Checked := not TAction(Sender).Checked;
     Visible := TAction(Sender).Checked;
+  end;
   if Assigned(FLiveBlameData) then
   begin
     FLiveBlameData.FButtonDown := Visible;
@@ -2201,6 +2264,8 @@ begin
         end;
     {$ENDIF LINEINFOEX}
     NextX := 0;
+    for I := 0 to Pred(FSettings.ColorBarOrderList.Count) do
+      Inc(NextX, 8);
     OrderList := TList.Create;
     try
       for I := 0 to Pred(FSettings.ShowOrderList.Count) do
@@ -2933,7 +2998,7 @@ begin
         Action.Hint := 'Show Blame';
         Action.ActionList := ActionLst;
         Action.OnExecute := EditorPanel.ShowHidePanel;
-        Action.AutoCheck := True;
+        Action.AutoCheck := False;//AutoCheck requires GroupIndex to be 0, it is mimicked in ShowHidePanel
         Action.GroupIndex := 123;
 
         SpeedButton := TSpeedButton.Create(BlameButtonPanel);
@@ -3437,6 +3502,7 @@ var
   PaintBlocks: TObjectList<TPaintBlock>;
   PaintBlock: TPaintBlock;
   FileName: string;
+  EditViewRect: TRect;
 begin
   if FPainting then
     Exit;
@@ -3565,6 +3631,35 @@ begin
             begin
               Canvas.TextOut(2, LH * PaintBlocks[I].ViewStartRow - LH, Format('... %d lines hidden', [PaintBlocks[I].EndRow - PaintBlocks[I].StartRow]));
             end;
+          if FSettings.ColorBarOrderList.Count > 0 then
+          begin
+            for I := 0 to FSettings.ColorBarOrderList.Count - 1 do
+              PaintColorBar(Canvas, Rect(8 * I, 0, 8 + 8 * I, Bitmap.Height),
+                FLiveBlameData.FLines.Count, clNone, clWindow, GetLineColor, Integer(FSettings.ColorBarOrderList[I]));
+            if FCursorLine >= 0 then
+            begin
+              I := ((Bitmap.Height - 2) * FCursorLine) div FLiveBlameData.FLines.Count + 1;
+              Canvas.Pen.Color := clBlack;
+              Canvas.MoveTo(0, I);
+              Canvas.LineTo(FSettings.ColorBarOrderList.Count * 8, I);
+            end;
+            LN := BottomRow;
+            if LastRow < LN then
+              LN := LastRow;
+            if (FTopLine >= 0) and (LN >= FTopLine) then
+            begin
+              I := ((Bitmap.Height - 2) * FTopLine) div FLiveBlameData.FLines.Count + 1;
+              EditViewRect := Rect(0, I, FSettings.ColorBarOrderList.Count * 8, 0);
+              I := ((Bitmap.Height - 2) * LN) div FLiveBlameData.FLines.Count + 1;
+              EditViewRect.Bottom := I;
+              if EditViewRect.Bottom >= EditViewRect.Top then
+              begin
+                Canvas.Pen.Color := clBlack;
+                Canvas.Brush.Style := bsClear;
+                Canvas.Rectangle(EditViewRect);
+              end;
+            end;
+          end;
         end;
         if not FLiveBlameData.FBlameInfoAvailable then
         begin
@@ -3615,6 +3710,85 @@ begin
     end;
   finally
     FPainting := False;
+  end;
+end;
+
+procedure TLiveBlameEditorPanel.PaintColorBar(ACanvas: TCanvas; ARect: TRect;
+  ALinesCount, APenColor, ABackGroundColor: TColor;
+  AOnGetLineColor: TOnGetLineColorEvent; AColorIndex: Integer);
+var
+  HeightRatio: Single;
+  TruncedHeightRatio: Integer;
+  I, Line, Y, Y1, Y2, StartY, X1, X2: Integer;
+  RepaintLocalChanges: Boolean;
+  LocalLines: TList<Integer>;
+begin
+  if ALinesCount = 0 then
+  begin
+    ACanvas.Brush.Color := ABackGroundColor;
+    ACanvas.Pen.Style := psClear;
+    ACanvas.Rectangle(ARect);
+  end
+  else
+  begin
+    if APenColor = clNone then
+    begin
+      HeightRatio := (ARect.Bottom - ARect.Top) / ALinesCount;
+      StartY := ARect.Top;
+      X1 := ARect.Left;
+      X2 := ARect.Right;
+      ACanvas.Pen.Style := psClear;
+    end
+    else
+    begin
+      HeightRatio := (ARect.Bottom - ARect.Top - 2) / ALinesCount;
+      StartY := ARect.Top + 1;
+      X1 := ARect.Left + 1;
+      X2 := ARect.Right - 1;
+      ACanvas.Pen.Width := 1;
+      ACanvas.Pen.Color := APenColor;
+    end;
+    TruncedHeightRatio := Trunc(HeightRatio);
+    ACanvas.Brush.Color := ABackGroundColor;
+    ACanvas.Rectangle(ARect);
+    ACanvas.Pen.Style := psSolid;
+    if Assigned(AOnGetLineColor) then
+    begin
+      RepaintLocalChanges := HeightRatio < 1.0;
+      LocalLines := TList<Integer>.Create;
+      try
+        for I := 0 to Pred(ALinesCount) do
+        begin
+          ACanvas.Pen.Color := AOnGetLineColor(I, AColorIndex);
+          Y1 := StartY + Trunc(I * HeightRatio);
+          Y2 := Y1 + TruncedHeightRatio;
+          for Y := Y1 to Y2 do
+          begin
+            ACanvas.MoveTo(X1, Y);
+            ACanvas.LineTo(X2, Y);
+          end;
+          if RepaintLocalChanges and (FLiveBlameData.FLines.Count > I) then
+            if (FLiveBlameData.FLines[I] = FLiveBlameData.FFileRevision) or
+              (FLiveBlameData.FLines[I] = FLiveBlameData.FBufferRevision) then
+            LocalLines.Add(I);
+        end;
+        if LocalLines.Count > 0 then
+          for I := 0 to LocalLines.Count - 1 do
+          begin
+            Line := LocalLines[I];
+            ACanvas.Pen.Color := AOnGetLineColor(Line, AColorIndex);
+            Y1 := StartY + Trunc(Line * HeightRatio);
+            Y2 := Y1 + TruncedHeightRatio;
+            for Y := Y1 to Y2 do
+            begin
+              ACanvas.MoveTo(X1, Y);
+              ACanvas.LineTo(X2, Y);
+            end;
+          end;
+      finally
+        LocalLines.Free;
+      end;
+    end;
   end;
 end;
 

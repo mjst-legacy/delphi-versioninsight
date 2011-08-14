@@ -152,8 +152,11 @@ var
   SvnItem: TSvnItem;
   Locked: Boolean;
   Properties: TStringList;
+  FileDir, LastDirectory: string;
+  LastDirectoryVersioned: Boolean;
 begin
   NameThreadForDebugging('DelphiSVN State Retriever');
+  LastDirectoryVersioned := False;
   while not Terminated do
   begin
     FileName := '';
@@ -163,7 +166,9 @@ begin
       begin
         FileName := FItems[0];
         FItems.Delete(0);
-      end;
+      end
+      else
+        LastDirectory := '';
     finally
       if Locked then
         FLock.Leave;
@@ -171,7 +176,13 @@ begin
     if FileName <> '' then
     begin
       try
-        if FSvnClient.IsPathVersioned(ExtractFilePath(FileName)) then
+        FileDir := ExtractFilePath(FileName);
+        if not AnsiSameText(LastDirectory, FileDir) then
+        begin
+          LastDirectory := FileDir;
+          LastDirectoryVersioned := FSvnClient.IsPathVersioned(FileDir);
+        end;
+        if LastDirectoryVersioned then
         begin
           Properties := TStringList.Create;
           try

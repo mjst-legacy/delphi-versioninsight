@@ -652,22 +652,27 @@ var
   CmdLine, Output: string;
   CurrentDir: string;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(AFileName));
-    CmdLine := FGitExecutable + ' log --max-count=1 ' + QuoteFileName(ExtractFileName(AFileName));
-    Res := Execute(CmdLine, Output);
-    if (Res = 0) and (Pos('commit ', Output) = 1) then
-      Result := True
-    else
-    begin
-      CmdLine := FGitExecutable + ' status ' + QuoteFileName(ExtractFileName(AFileName));
+  if FGitExecutable <> '' then
+  begin
+    CurrentDir := GetCurrentDir;
+    try
+      SetCurrentDir(ExtractFilePath(AFileName));
+      CmdLine := FGitExecutable + ' log --max-count=1 ' + QuoteFileName(ExtractFileName(AFileName));
       Res := Execute(CmdLine, Output);
-      Result := {(Res = 0) and }(Pos('fatal: Not a git repository', Output) = 0);
+      if (Res = 0) and (Pos('commit ', Output) = 1) then
+        Result := True
+      else
+      begin
+        CmdLine := FGitExecutable + ' status ' + QuoteFileName(ExtractFileName(AFileName));
+        Res := Execute(CmdLine, Output);
+        Result := {(Res = 0) and }(Pos('fatal: Not a git repository', Output) = 0);
+      end;
+    finally
+      SetCurrentDir(CurrentDir);
     end;
-  finally
-    SetCurrentDir(CurrentDir);
-  end;
+  end
+  else
+    Result := False;
 end;
 
 end.

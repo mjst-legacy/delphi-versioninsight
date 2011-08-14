@@ -152,9 +152,11 @@ var
   SvnItem: THgItem;
   Locked: Boolean;
   Properties: TStringList;
-  StatusStr: string;
+  StatusStr, FileDir, LastDirectory: string;
+  LastDirectoryVersioned: Boolean;
 begin
   NameThreadForDebugging('VerIns Hg State Retriever');
+  LastDirectoryVersioned := False;
   while not Terminated do
   begin
     FileName := '';
@@ -164,7 +166,9 @@ begin
       begin
         FileName := FItems[0];
         FItems.Delete(0);
-      end;
+      end
+      else
+        LastDirectory := '';
     finally
       if Locked then
         FLock.Leave;
@@ -172,7 +176,13 @@ begin
     if FileName <> '' then
     begin
       try
-        if FSvnClient.IsVersioned(ExtractFilePath(FileName)) then
+        FileDir := ExtractFilePath(FileName);
+        if not AnsiSameText(LastDirectory, FileDir) then
+        begin
+          LastDirectory := FileDir;
+          LastDirectoryVersioned := FSvnClient.IsVersioned(FileDir);
+        end;
+        if LastDirectoryVersioned then
         begin
           Properties := TStringList.Create;
           try

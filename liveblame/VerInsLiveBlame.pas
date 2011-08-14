@@ -86,6 +86,13 @@ begin
   RegisterAddInOptions;
 end;
 
+{$IFNDEF DEBUG}
+//"disables" OutputDebugString in non debug mode
+procedure OutputDebugString(const AMsg: string);
+begin
+end;
+{$ENDIF ~DEBUG}
+
 type
   TLiveBlamePaintBox = class(TCustomControl)
   private
@@ -441,7 +448,7 @@ type
     FFirstRevisionIDStr: string;
     FLatestRevisionContent: RawByteString;
   public
-    constructor Create(const AFileName: string);
+    constructor Create(const AFileName: string); reintroduce;
     destructor Destroy; override;
     procedure BuildLineHistory(ASettings: TJVCSLineHistorySettings); virtual; abstract;
     procedure Load; virtual; abstract;

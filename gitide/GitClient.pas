@@ -517,7 +517,7 @@ begin
   begin
     OutputStrings := TStringList.Create;
     try
-      OutputStrings.Text := Output;
+      OutputStrings.Text := UTF8ToString(Output);
       I := 0;
       HistoryItem := nil;
       while I < OutputStrings.Count do

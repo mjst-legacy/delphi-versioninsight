@@ -2,7 +2,7 @@
 {\colortbl ;\red0\green0\blue128;\red0\green0\blue255;}
 {\*\generator Msftedit 5.41.21.2509;}\viewkind4\uc1\pard\cf1\lang1033\b\f0\fs16 Please note: By using this software, you are agreeing to the terms of this license!\par
 \cf0\b0\par
-Version Insight Plus Beta 3\par
+Version Insight Plus Beta 4\par
 ==========================\par
 \par
 (c) 2011 Uwe Schuster\par
@@ -35,7 +35,7 @@ built on top of potential OTA features in future RAD Studio releases.\par
 \par
 Features\par
 --------\par
-This special version is based on Version Insight revision 87 and\par
+This special version is based on Version Insight revision 94 and\par
 consists of the Subversion integration, the Mercurial integration, the\par
 Git integration and Live Blame.\par
 \par
@@ -92,6 +92,19 @@ o I have seen my work IDE crashing with the App crash dialog when\par
 \par
 Changes\par
 -------\par
+2011/08/17\par
+o Improvement: Defer state flushs during compilation to avoid\par
+   slowdown and bad interactions\par
+o Improvement: State retrieving should now be about 50 percent\par
+   faster when multiple items from the same dir are in the queue\par
+   (noticeable especially with Mercurial and Git)\par
+o Fixed: Live Blame data wasn\rquote t shown for Mercurial or Subversion\par
+   when Git was enabled, but no Git.exe was specified\par
+o Tweak: Disabled Live Blame debug output\par
+o Internal: New Method to gather filesystem changes\par
+   (for now still on directory level)\par
+o Fixed: Git non ASCII comments need UTF8 decoding\par
+\par
 2011/07/28\par
 o Fixed: There was no Subversion icon when there was no \par
    libsvn_client-1.dll somewhere in a path in the path variable\par

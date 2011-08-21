@@ -14,8 +14,8 @@
 { The Original Code is GitClient.pas.                                          }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2010 Uwe Schuster. All      }
-{ Rights Reserved.                                                             }
+{ Portions created by Uwe Schuster are Copyright © 2010 - 2011 Uwe Schuster.   }
+{ All Rights Reserved.                                                         }
 {                                                                              }
 { Contributors:                                                                }
 { Uwe Schuster (uschuster)                                                     }
@@ -100,6 +100,7 @@ type
     FGitExecutable: string;
   public
     constructor Create;
+    function IsPathInWorkingCopy(const APath: string): Boolean;
     function IsVersioned(const AFileName: string): Boolean;
     property GitExecutable: string read FGitExecutable write FGitExecutable;
   end;
@@ -644,6 +645,33 @@ constructor TGitClient.Create;
 begin
   inherited Create;
   //FGitExecutable := 'c:\Program Files (x86)\Git\bin\git.exe';
+end;
+
+function TGitClient.IsPathInWorkingCopy(const APath: string): Boolean;
+var
+  Dir, LastDir: string;
+  F: TSearchRec;
+  Re, L: Integer;
+begin
+  Result := False;
+  Dir := ExcludeTrailingPathDelimiter(APath);
+  LastDir := '';
+  L := Length(ExtractFileDrive(APath));
+  while (Dir <> '') and (Dir <> LastDir) do
+  begin
+    LastDir := Dir;
+    Re := FindFirst(Dir + '\.git', faAnyFile, F);
+    FindClose(F);
+    if (Re = 0) and (F.Attr and faDirectory <> 0) then
+    begin
+      Result := True;
+      Break;
+    end;
+    if Length(Dir) - 1 > L then
+      Dir := ExcludeTrailingPathDelimiter(ExtractFilePath(Copy(Dir, 1, Length(Dir) - 1)))
+    else
+      Break;
+  end;
 end;
 
 function TGitClient.IsVersioned(const AFileName: string): Boolean;

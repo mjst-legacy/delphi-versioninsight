@@ -14,8 +14,8 @@
 { The Original Code is HgClient.pas.                                           }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2010 Uwe Schuster. All      }
-{ Rights Reserved.                                                             }
+{ Portions created by Uwe Schuster are Copyright © 2010 - 2011 Uwe Schuster.   }
+{ All Rights Reserved.                                                         }
 {                                                                              }
 { Contributors:                                                                }
 { Uwe Schuster (uschuster)                                                     }
@@ -141,6 +141,7 @@ type
     function Commit(AFileList: TStringList; const AMessage: string; const AUser: string = ''): THgError;
     function FindRepositoryRoot(const APath: string): string;
     function GetModifications(const APath: string; ACallBack: THgStatusCallback): Boolean;
+    function IsPathInWorkingCopy(const APath: string): Boolean;
     function IsVersioned(const AFileName: string): Boolean;
     function Revert(const AFileName: string): Boolean;
     procedure SaveFileContentToStream(const AFileName: string; ARevision: Integer; OutputStream: TStream);
@@ -1123,6 +1124,33 @@ begin
     finally
       SetCurrentDir(CurrentDir);
     end;
+  end;
+end;
+
+function THgClient.IsPathInWorkingCopy(const APath: string): Boolean;
+var
+  Dir, LastDir: string;
+  F: TSearchRec;
+  Re, L: Integer;
+begin
+  Result := False;
+  Dir := ExcludeTrailingPathDelimiter(APath);
+  LastDir := '';
+  L := Length(ExtractFileDrive(APath));
+  while (Dir <> '') and (Dir <> LastDir) do
+  begin
+    LastDir := Dir;
+    Re := FindFirst(Dir + '\.hg', faAnyFile, F);
+    FindClose(F);
+    if (Re = 0) and (F.Attr and faDirectory <> 0) then
+    begin
+      Result := True;
+      Break;
+    end;
+    if Length(Dir) - 1 > L then
+      Dir := ExcludeTrailingPathDelimiter(ExtractFilePath(Copy(Dir, 1, Length(Dir) - 1)))
+    else
+      Break;
   end;
 end;
 

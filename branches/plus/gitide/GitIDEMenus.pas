@@ -198,7 +198,10 @@ function TGitNotifier.IsFileManaged(const Project: IOTAProject;
     if FileExists(APathName) then
     begin
       try
-        Result := IDEClient.GitClient.IsVersioned(APathName);
+        if IDEClient.GitClient.IsPathInWorkingCopy(ExtractFilePath(APathName)) then
+          Result := IDEClient.GitClient.IsVersioned(APathName)
+        else
+          Result := False;
       except
         Result := False;
         Exit;

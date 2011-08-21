@@ -536,7 +536,10 @@ function THgNotifier.IsFileManaged(const Project: IOTAProject;
     if FileExists(APathName) then
     begin
       try
-        Result := IDEClient.HgClient.IsVersioned(APathName);
+        if IDEClient.HgClient.IsPathInWorkingCopy(ExtractFilePath(APathName)) then
+          Result := IDEClient.HgClient.IsVersioned(APathName)
+        else
+          Result := False;
       except
         Result := False;
         Exit;

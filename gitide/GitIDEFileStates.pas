@@ -180,7 +180,8 @@ begin
         if not AnsiSameText(LastDirectory, FileDir) then
         begin
           LastDirectory := FileDir;
-          LastDirectoryVersioned := FSvnClient.IsVersioned(FileDir);
+          LastDirectoryVersioned := FSvnClient.IsPathInWorkingCopy(FileDir) and
+            FSvnClient.IsVersioned(FileDir);
         end;
         if LastDirectoryVersioned then
         begin

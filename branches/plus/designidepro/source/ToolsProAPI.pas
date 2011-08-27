@@ -95,9 +95,11 @@ type
   TOTAProFileStateResult = (fsrOK, fsrError, fsrDeferred);
 
   IOTAProVersionControlFileStateProvider = interface(IInterface)
-  ['{48F13070-9C44-4517-BA3B-887255EC97AF}']
+  ['{0A3693B9-7D10-4FD4-BEF7-02508229A56E}']
     //TODO: Comment
     procedure FlushDir(const ADirectory: string);
+    //TODO: Comment    
+    procedure FlushFile(const FileName: string);
     //TODO: Comment
     function GetFileState(const FileName: string; var AFileState: TOTAProFileState): TOTAProFileStateResult;
     //TODO: Comment

@@ -79,6 +79,7 @@ type
   public
     constructor Create(ADirectory: string);
     destructor Destroy; override;
+    procedure DeleteFile(const FileName: string);
     function GetState(const AFileName: string): TSvnState;
     property Directory: string read FDirectory;
     property Items: TObjectList<TSvnState> read FItems;
@@ -91,6 +92,7 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure DeleteDirectory(const ADirectory: string);
+    procedure DeleteFile(const FileName: string);
     function IndexOf(const ADirectory: string): Integer;
     function GetDirectory(const ADirectory: string): TSvnStateDir;
   end;
@@ -104,6 +106,7 @@ type
     procedure HandleState(const AFileName: string; AVersioned: Boolean; ATextStatus: TSvnWCStatusKind; AProperties: TStringList);
   protected
     procedure FlushDir(const ADirectory: string);
+    procedure FlushFile(const FileName: string);
     function GetFileState(const FileName: string; var AFileState: TOTAProFileState): TOTAProFileStateResult;
     function GetFileStateInfo(const FileName: string; var AProperty: IProperty): TOTAProFileStateResult;
   public
@@ -246,6 +249,21 @@ begin
   inherited Destroy;
 end;
 
+procedure TSvnStateDir.DeleteFile(const FileName: string);
+var
+  I, Idx: Integer;
+begin
+  Idx := -1;
+  for I := 0 to FItems.Count - 1 do
+    if AnsiSameText(FItems[I].FileName, FileName) then
+    begin
+      Idx := I;
+      Break;
+    end;
+  if Idx <> -1 then
+    FItems.Delete(Idx);
+end;
+
 function TSvnStateDir.GetState(const AFileName: string): TSvnState;
 var
   I, Idx: Integer;
@@ -282,6 +300,15 @@ begin
   Idx := IndexOf(ADirectory);
   if Idx <> -1 then
     FItems.Delete(Idx);
+end;
+
+procedure TSvnStateDirList.DeleteFile(const FileName: string);
+var
+  Idx: Integer;
+begin
+  Idx := IndexOf(ExtractFilePath(FileName));
+  if Idx <> -1 then
+    FItems[Idx].DeleteFile(FileName);
 end;
 
 destructor TSvnStateDirList.Destroy;
@@ -346,6 +373,16 @@ begin
   FLock.Enter;
   try
     FItems.DeleteDirectory(ADirectory);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TIOTAProVersionControlFileStateProvider.FlushFile(const FileName: string);
+begin
+  FLock.Enter;
+  try
+    FItems.DeleteFile(FileName);
   finally
     FLock.Leave;
   end;

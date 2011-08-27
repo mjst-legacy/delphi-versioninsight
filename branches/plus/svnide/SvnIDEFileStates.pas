@@ -194,10 +194,13 @@ begin
               Properties.Add('Repository=' + SvnItem.Repository);
               Properties.Add('Text Status=' + StatusKindStr(SvnItem.TextStatus));
               Properties.Add('Property Status=' + StatusKindStr(SvnItem.PropStatus));
-              Properties.Add('Base Revision=' + IntToStr(SvnItem.BaseRevision));
-              Properties.Add('Committed Revision=' + IntToStr(SvnItem.CommittedRevision));
-              Properties.Add('Committed Author=' + SvnItem.CommitAuthor);
-              Properties.Add('Commit Time=' + DateTimeToStr(SvnItem.CommitTime));
+              if not (TextStatus in [svnWcStatusAdded]) then
+              begin
+                Properties.Add('Base Revision=' + IntToStr(SvnItem.BaseRevision));
+                Properties.Add('Committed Revision=' + IntToStr(SvnItem.CommittedRevision));
+                Properties.Add('Committed Author=' + SvnItem.CommitAuthor);
+                Properties.Add('Commit Time=' + DateTimeToStr(SvnItem.CommitTime));
+              end;
             finally
               SvnItem.Free;
             end;

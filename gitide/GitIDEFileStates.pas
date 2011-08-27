@@ -200,7 +200,7 @@ begin
                   StatusStr := '?';
               end;
               Properties.Add('Status=' + StatusStr);
-              if not (TextStatus in [gsUnknown]) then
+              if not (TextStatus in [gsAdded, gsUnknown]) then
               begin
                 SvnItem.LoadHistory(True);
                 if SvnItem.HistoryCount >= 1 then

@@ -75,25 +75,23 @@ type
   TSvnStateDir = class(TObject)
   private
     FDirectory: string;
-    FItems: TObjectList<TSvnState>;
+    FItems: TObjectDictionary<string, TSvnState>;
   public
     constructor Create(ADirectory: string);
     destructor Destroy; override;
     procedure DeleteFile(const FileName: string);
     function GetState(const AFileName: string): TSvnState;
     property Directory: string read FDirectory;
-    property Items: TObjectList<TSvnState> read FItems;
   end;
 
   TSvnStateDirList = class(TObject)
   private
-    FItems: TObjectList<TSvnStateDir>;
+    FItems: TObjectDictionary<string, TSvnStateDir>;
   public
     constructor Create;
     destructor Destroy; override;
     procedure DeleteDirectory(const ADirectory: string);
     procedure DeleteFile(const FileName: string);
-    function IndexOf(const ADirectory: string): Integer;
     function GetDirectory(const ADirectory: string): TSvnStateDir;
   end;
 
@@ -254,7 +252,7 @@ constructor TSvnStateDir.Create(ADirectory: string);
 begin
   inherited Create;
   FDirectory := ADirectory;
-  FItems := TObjectList<TSvnState>.Create;
+  FItems := TObjectDictionary<string, TSvnState>.Create([doOwnsValues]);
 end;
 
 destructor TSvnStateDir.Destroy;
@@ -264,65 +262,45 @@ begin
 end;
 
 procedure TSvnStateDir.DeleteFile(const FileName: string);
-var
-  I, Idx: Integer;
 begin
-  Idx := -1;
-  for I := 0 to FItems.Count - 1 do
-    if AnsiSameText(FItems[I].FileName, FileName) then
-    begin
-      Idx := I;
-      Break;
-    end;
-  if Idx <> -1 then
-    FItems.Delete(Idx);
+  FItems.Remove(AnsiLowerCase(FileName));
 end;
 
 function TSvnStateDir.GetState(const AFileName: string): TSvnState;
 var
-  I, Idx: Integer;
   State: TOTAProFileState;
+  LowerCaseFileName: string;
 begin
-  Result := nil;
-  for I := 0 to FItems.Count - 1 do
-    if AnsiSameText(FItems[I].FileName, AFileName) then
-    begin
-      Result := FItems[I];
-      Break;
-    end;
-  if not Assigned(Result) then
+  LowerCaseFileName := AnsiLowerCase(AFileName);
+  if not FItems.TryGetValue(LowerCaseFileName, Result) then
   begin
     State.OverlayImageIndex := -1;
     State.StatusBarImageIndex := -1;
     State.DisplayText := '?';
     State.TextColor := clNone;
-    Idx := FItems.Add(TSvnState.Create(AFileName, State));
-    Result := FItems[Idx];
+    FItems.Add(LowerCaseFileName, TSvnState.Create(AFileName, State));
+    if not FItems.TryGetValue(LowerCaseFileName, Result) then
+      Result := nil;
   end;
 end;
 
 constructor TSvnStateDirList.Create;
 begin
   inherited Create;
-  FItems := TObjectList<TSvnStateDir>.Create;
+  FItems := TObjectDictionary<string, TSvnStateDir>.Create([doOwnsValues]);
 end;
 
 procedure TSvnStateDirList.DeleteDirectory(const ADirectory: string);
-var
-  Idx: Integer;
 begin
-  Idx := IndexOf(ADirectory);
-  if Idx <> -1 then
-    FItems.Delete(Idx);
+  FItems.Remove(AnsiLowerCase(ADirectory));
 end;
 
 procedure TSvnStateDirList.DeleteFile(const FileName: string);
 var
-  Idx: Integer;
+  Dir: TSvnStateDir;
 begin
-  Idx := IndexOf(ExtractFilePath(FileName));
-  if Idx <> -1 then
-    FItems[Idx].DeleteFile(FileName);
+  if FItems.TryGetValue(AnsiLowerCase(ExtractFilePath(FileName)), Dir) then
+    Dir.DeleteFile(FileName);
 end;
 
 destructor TSvnStateDirList.Destroy;
@@ -333,29 +311,15 @@ end;
 
 function TSvnStateDirList.GetDirectory(const ADirectory: string): TSvnStateDir;
 var
-  Idx: Integer;
+  LowerCaseDirName: string;
 begin
-  Idx := IndexOf(ADirectory);
-  if Idx <> - 1 then
-    Result := FItems[Idx]
-  else
+  LowerCaseDirName := AnsiLowerCase(ADirectory);
+  if not FItems.TryGetValue(LowerCaseDirName, Result) then
   begin
-    Idx := FItems.Add(TSvnStateDir.Create(ADirectory));
-    Result := FItems[Idx];
+    FItems.Add(LowerCaseDirName, TSvnStateDir.Create(ADirectory));
+    if not FItems.TryGetValue(LowerCaseDirName, Result) then
+      Result := nil;
   end;
-end;
-
-function TSvnStateDirList.IndexOf(const ADirectory: string): Integer;
-var
-  I: Integer;
-begin
-  Result := -1;
-  for I := 0 to FItems.Count - 1 do
-    if AnsiSameText(FItems[I].Directory, ADirectory) then
-    begin
-      Result := I;
-      Break;
-    end;
 end;
 
 { TIOTAProVersionControlFileStateProvider }

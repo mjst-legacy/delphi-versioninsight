@@ -121,6 +121,22 @@ type
     property Status: THgStatus read FStatus;
   end;
 
+  THgStatusList = class(TObject)
+  private
+    FHgClient: THgClient;
+    FList: TList<TPair<string, THgStatus>>;
+    function GetCount: Integer;
+    function GetItems(AIndex: Integer): TPair<string, THgStatus>;
+  public
+    constructor Create(AHgClient: THgClient);
+    destructor Destroy; override;
+    procedure Add(const AFileName: string);
+    procedure Clear;
+    procedure Load;
+    property Count: Integer read GetCount;
+    property Items[AIndex: Integer]: TPair<string, THgStatus> read GetItems; default;
+  end;
+
   THgCloneCallBack = procedure(Sender: TObject; const AText: string; var Cancel: Boolean) of object;
   THgStatusCallback = procedure(Sender: TObject; Item: THgItem; var Cancel: Boolean) of object;
 
@@ -915,6 +931,164 @@ begin
       FStatus := gsUnknown;
   finally
     SetCurrentDir(CurrentDir);
+  end;
+end;
+
+{ THgStatusList }
+
+procedure THgStatusList.Clear;
+begin
+  FList.Clear;
+end;
+
+constructor THgStatusList.Create(AHgClient: THgClient);
+begin
+  inherited Create;
+  FHgClient := AHgClient;
+  FList := TList<TPair<string, THgStatus>>.Create;
+end;
+
+destructor THgStatusList.Destroy;
+begin
+  FList.Free;
+  inherited Destroy;
+end;
+
+procedure THgStatusList.Add(const AFileName: string);
+begin
+  FList.Add(TPair<string, THgStatus>.Create(AFileName, gsUnknown));
+end;
+
+function THgStatusList.GetCount: Integer;
+begin
+  Result := FList.Count;
+end;
+
+function THgStatusList.GetItems(AIndex: Integer): TPair<string, THgStatus>;
+begin
+  Result := FList[AIndex];
+end;
+
+procedure THgStatusList.Load;
+const
+  MaxItemsPerDir = 10;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  S, CurrentDir, ItemsDir, FileName: string;
+  LoadedItems: TDictionary<Integer, Integer>;
+  DirItems: TList<TPair<Integer, string>>;
+  I, J, Idx, DelIdx, LastIndex, Dummy: Integer;
+  OutputStrings: TStringList;
+  Status: THgStatus;
+  Pair: TPair<string, THgStatus>;
+begin
+  LoadedItems := TDictionary<Integer, Integer>.Create;
+  DirItems := TList<TPair<Integer, string>>.Create;
+  try
+    LastIndex := 0;
+    while LastIndex < Count do
+    begin
+      DirItems.Clear;
+      ItemsDir := '';
+      for I := LastIndex to Count - 1 do
+        if not LoadedItems.TryGetValue(I, Dummy) then
+        begin
+          if ItemsDir = '' then
+          begin
+            ItemsDir := ExtractFilePath(Items[I].Key);
+            DirItems.Add(TPair<Integer, string>.Create(I, ExtractFileName(Items[I].Key)));
+          end
+          else
+          if AnsiSameText(ItemsDir, ExtractFilePath(Items[I].Key)) then
+            DirItems.Add(TPair<Integer, string>.Create(I, ExtractFileName(Items[I].Key)));
+          if DirItems.Count >= MaxItemsPerDir then
+            Break;
+        end;
+      if DirItems.Count > 0 then
+      begin
+        LastIndex := DirItems.Last.Key;
+        for I := 0 to DirItems.Count - 1 do
+          LoadedItems.Add(DirItems[I].Key, 0);
+        CurrentDir := GetCurrentDir;
+        try
+          SetCurrentDir(ItemsDir);
+          CmdLine := FHgClient.HgExecutable + ' status -A';
+          for I := 0 to DirItems.Count - 1 do
+            CmdLine := CmdLine + ' ' + QuoteFileName(DirItems[I].Value);
+          Output := '';
+          Res := Execute(CmdLine, Output);
+          if Res = 0 then
+          begin
+            OutputStrings := TStringList.Create;
+            try
+              OutputStrings.Text := Output;
+              I := 0;
+              while I < OutputStrings.Count do
+              begin
+                S := AnsiUpperCase(OutputStrings[I]);
+                if Length(S) > 2 then
+                begin
+                  if S[1] = 'M' then
+                    Status := gsModified
+                  else
+                  if S[1] = 'A' then
+                    Status := gsAdded
+                  else
+                  if S[1] = 'R' then
+                    Status := gsDeleted
+                  else
+                  if S[1] = '?' then
+                    Status := gsUnversioned
+                  else
+                  if S[1] = '!' then
+                    Status := gsMissing
+                  else
+                  if S[1] = 'C' then
+                    Status := gsNormal
+                  else
+                    Status := gsUnknown;
+                  DelIdx := -1;
+                  for J := 0 to DirItems.Count - 1 do
+                  begin
+                    FileName := AnsiUpperCase(DirItems[J].Value);
+                    if Pos(FileName, S) = 3 then
+                    begin
+                      Idx := DirItems[J].Key;
+                      Pair := Items[Idx];
+                      Pair.Value := Status;
+                      FList[Idx] := Pair;
+                      DelIdx := J;
+                      Break;
+                    end;
+                  end;
+                  if DelIdx <> -1 then
+                    DirItems.Delete(DelIdx);
+                end;
+                Inc(I);
+              end;
+            finally
+              OutputStrings.Free;
+            end;
+          end
+          else
+          for I := 0 to DirItems.Count - 1 do
+          begin
+            Idx := DirItems[I].Key;
+            Pair := Items[Idx];
+            Pair.Value := gsUnknown;
+            FList[Idx] := Pair;
+          end;
+        finally
+          SetCurrentDir(CurrentDir);
+        end;
+      end
+      else
+        Break;
+    end;
+  finally
+    DirItems.Free;
+    LoadedItems.Free;
   end;
 end;
 

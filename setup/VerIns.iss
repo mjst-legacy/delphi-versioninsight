@@ -7,7 +7,7 @@
 
 #IFDEF BDSSuffix150
 #define VERSION  'XE'
-#define BUILDNO  'Beta4'
+#define BUILDNO  'Beta5'
 #ENDIF
 
 OutputBaseFilename=.\VerInsPlus{#VERSION}{#BUILDNO}

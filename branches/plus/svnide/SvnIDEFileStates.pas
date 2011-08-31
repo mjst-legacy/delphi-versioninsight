@@ -101,8 +101,12 @@ type
     FThread: TSvnStateThread;
     FItems: TSvnStateDirList;
     FLock: TCriticalSection;
+    FRestartThread: Boolean;
+    FUpdateCount: Integer;
     procedure HandleState(const AFileName: string; AVersioned: Boolean; ATextStatus: TSvnWCStatusKind; AProperties: TStringList);
   protected
+    procedure AfterCOmpile;
+    procedure BeforeCOmpile;
     procedure FlushDir(const ADirectory: string);
     procedure FlushFile(const FileName: string);
     function GetFileState(const FileName: string; var AFileState: TOTAProFileState): TOTAProFileStateResult;
@@ -317,6 +321,8 @@ begin
   FThread.OnState := HandleState;
   FItems := TSvnStateDirList.Create;
   FLock := TCriticalSection.Create;
+  FRestartThread := False;
+  FUpdateCount := 0;
 end;
 
 destructor TIOTAProVersionControlFileStateProvider.Destroy;
@@ -330,6 +336,26 @@ begin
   end;
   FThread.Free;
   inherited Destroy;
+end;
+
+procedure TIOTAProVersionControlFileStateProvider.AfterCompile;
+begin
+  Dec(FUpdateCount);
+  if FUpdateCount <= 0 then
+  begin
+    FUpdateCount := 0;
+    if FRestartThread then
+    begin
+      FThread.Resume;
+      FRestartThread := False;
+    end;
+  end;
+end;
+
+procedure TIOTAProVersionControlFileStateProvider.BeforeCompile;
+begin
+  Inc(FUpdateCount);
+  FThread.Suspend;
 end;
 
 procedure TIOTAProVersionControlFileStateProvider.FlushDir(const ADirectory: string);
@@ -384,7 +410,12 @@ begin
     FLock.Leave;
   end;
   if StartThread and FThread.Suspended then
-    FThread.Resume;
+  begin
+    if FUpdateCount = 0 then
+      FThread.Resume
+    else
+      FRestartThread := True;
+  end;
 end;
 
 type
@@ -589,7 +620,12 @@ begin
     FLock.Leave;
   end;
   if StartThread and FThread.Suspended then
-    FThread.Resume;
+  begin
+    if FUpdateCount = 0 then
+      FThread.Resume
+    else
+      FRestartThread := True;
+  end;
 end;
 
 procedure TIOTAProVersionControlFileStateProvider.HandleState(

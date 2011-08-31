@@ -95,7 +95,13 @@ type
   TOTAProFileStateResult = (fsrOK, fsrError, fsrDeferred);
 
   IOTAProVersionControlFileStateProvider = interface(IInterface)
-  ['{0A3693B9-7D10-4FD4-BEF7-02508229A56E}']
+  ['{44D6006E-D97A-4C05-BE4B-785CB99AB888}']
+    { This procedure is called after a compile. The file state provider can now
+      perform again any actions. }
+    procedure AfterCompile;
+    { This procedure is called before a compile. The file state provider now
+      should stop any actions to avoid any bad interactions during compilation. }
+    procedure BeforeCompile;
     //TODO: Comment
     procedure FlushDir(const ADirectory: string);
     //TODO: Comment    

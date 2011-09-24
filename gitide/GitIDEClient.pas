@@ -27,7 +27,7 @@ unit GitIDEClient;
 interface
 
 uses
-  GitClient;
+  SysUtils, Classes, GitClient;
 
 type
   TGitIDEClient = class(TObject)
@@ -47,6 +47,10 @@ type
 
 procedure Register;
 
+function BaseRegKey: string;
+procedure LoadSourceRepoHistory(const List: TStringList);
+procedure SaveSourceRepoHistory(const List: TStringList);
+
 var
   IDEClient: TGitIDEClient;
 
@@ -54,7 +58,12 @@ implementation
 
 uses
   Registry, ToolsAPI, FileHistoryAPI, GitIDEHistory, GitIDEAddInOptions, GitIDEMenus,
-  GitIDEIcons, GitIDEFileStates;
+  GitImages, GitIDEConst, GitIDEIcons, GitIDEFileStates;
+
+const
+  sSourceRepoHistory = 'SourceRepoHistory';
+  sSourceRepoHistoryItem = 'SourceRepoHistory%d';
+  MaxSourceRepoHistory = 20;
 
 procedure Register;
 begin
@@ -88,6 +97,7 @@ begin
   then
     FileHistoryManager.UnregisterHistoryProvider(FHistoryProviderIndex);
   FHistoryProviderIndex := -1;
+  FreeAndNil(GitImageModule);
 end;
 
 function TGitIDEClient.GetGitClient: TGitClient;
@@ -106,6 +116,8 @@ begin
   if FGitInitialized then
     Exit;
   FGitInitialized := True;
+
+  GitImageModule := TGitImageModule.Create(nil);
 
   FGitClient := TGitClient.Create;
 
@@ -126,6 +138,65 @@ begin
   begin
     if BorlandIDEServices.GetService(IOTAFileHistoryManager, FileHistoryManager) then
       FHistoryProviderIndex := FileHistoryManager.RegisterHistoryProvider(TGitFileHistoryProvider.Create(Self));
+  end;
+end;
+
+function BaseRegKey: string;
+begin
+  Result := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey + '\' + sGit + '\';
+end;
+
+procedure LoadSourceRepoHistory(const List: TStringList);
+var
+  Reg: TRegistry;
+  BaseKey: string;
+  Key: string;
+  S: string;
+  I: Integer;
+begin
+  Reg := TRegistry.Create;
+  try
+    BaseKey := BaseRegKey + sSourceRepoHistory;
+    if not Reg.KeyExists(BaseKey) then
+      Exit;
+    Reg.OpenKeyReadOnly(BaseKey);
+    for I := 0 to MaxSourceRepoHistory - 1 do
+    begin
+      Key := Format(sSourceRepoHistoryItem, [I]);
+      S := Reg.ReadString(Key);
+      if S = '' then
+        Break
+      else
+        List.Add(S);
+    end;
+  finally
+    Reg.Free;
+  end;
+end;
+
+procedure SaveSourceRepoHistory(const List: TStringList);
+var
+  Reg: TRegistry;
+  BaseKey: string;
+  Key: string;
+  I: Integer;
+  Count: Integer;
+begin
+  Reg := TRegistry.Create;
+  try
+    BaseKey := BaseRegKey + sSourceRepoHistory;
+    Reg.OpenKey(BaseKey, True);
+    if List.Count > MaxSourceRepoHistory then
+      Count := MaxSourceRepoHistory
+    else
+      Count := List.Count;
+    for I := 0 to Count - 1 do
+    begin
+      Key := Format(sSourceRepoHistoryItem, [I]);
+      Reg.WriteString(Key, List[I]);
+    end;
+  finally
+    Reg.Free;
   end;
 end;
 

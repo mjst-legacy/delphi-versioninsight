@@ -95,11 +95,17 @@ type
     property Status: TGitStatus read FStatus;
   end;
 
+  TGitCloneCallBack = procedure(Sender: TObject; const AText: string; var Cancel: Boolean) of object;
+
   TGitClient = class(TObject)
   private
+    FCancel: Boolean;
+    FCloneCallBack: TGitCloneCallBack;
     FGitExecutable: string;
+    procedure ExecuteTextHandler(const Text: string);
   public
     constructor Create;
+    function Clone(const ASourcePath, ADestPath: string; ACallBack: TGitCloneCallBack = nil): Boolean;
     function IsPathInWorkingCopy(const APath: string): Boolean;
     function IsVersioned(const AFileName: string): Boolean;
     property GitExecutable: string read FGitExecutable write FGitExecutable;
@@ -332,9 +338,18 @@ begin
 end;
 
 function Execute(const CommandLine: string; var Output: string; RawOutput: Boolean = False;
-  AbortPtr: PBoolean = nil): Cardinal;
+  AbortPtr: PBoolean = nil): Cardinal; overload;
 begin
   Result := InternalExecute(CommandLine, Output, nil, RawOutput, AbortPtr);
+end;
+
+function Execute(const CommandLine: string; OutputLineCallback: TTextHandler; RawOutput: Boolean = False;
+  AbortPtr: PBoolean = nil): Cardinal; overload; overload;
+var
+  Dummy: string;
+begin
+  Dummy := '';
+  Result := InternalExecute(CommandLine, Dummy, OutputLineCallback, RawOutput, AbortPtr);
 end;
 
 //------------------------------------------------------------------------------
@@ -645,6 +660,37 @@ constructor TGitClient.Create;
 begin
   inherited Create;
   //FGitExecutable := 'c:\Program Files (x86)\Git\bin\git.exe';
+end;
+
+function TGitClient.Clone(const ASourcePath, ADestPath: string; ACallBack: TGitCloneCallBack): Boolean;
+var
+  Res: Integer;
+  CmdLine: string;
+  CurrentDir: string;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    ForceDirectories(ADestPath);
+    SetCurrentDir(ADestPath);
+    CmdLine := GitExecutable + ' clone -v --progress ';
+    CmdLine := CmdLine + QuoteFileName(ASourcePath) + ' .';
+    FCloneCallBack := ACallBack;
+    try
+      FCancel := False;
+      Res := Execute(CmdLine, ExecuteTextHandler, False, @FCancel);
+    finally
+      FCloneCallBack := nil;
+    end;
+    Result := Res = 0;
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+end;
+
+procedure TGitClient.ExecuteTextHandler(const Text: string);
+begin
+  if Assigned(FCloneCallBack) then
+    FCloneCallBack(Self, Text, FCancel);
 end;
 
 function TGitClient.IsPathInWorkingCopy(const APath: string): Boolean;

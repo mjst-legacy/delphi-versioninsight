@@ -28,6 +28,7 @@ interface
 
 resourcestring
   sGit = 'Git';
+  sMenuOpenFromVersionControl = 'Open From Git (Clone)';
 
   SAuthor = 'Author: ';
   STime = 'Time: ';

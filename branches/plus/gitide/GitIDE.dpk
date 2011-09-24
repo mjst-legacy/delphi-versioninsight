@@ -27,7 +27,8 @@ package GitIDE;
 
 requires
   rtl,
-  designide;
+  designide,
+  vclimg;
 
 contains
   GitIDEHistory in 'GitIDEHistory.pas',
@@ -36,7 +37,13 @@ contains
   GitIDEAddInOptions in 'GitIDEAddInOptions.pas',
   GitAddInOptionsFrame in 'GitAddInOptionsFrame.pas' {frmGitTestsOptions: TFrame},
   GitIDEConst in 'GitIDEConst.pas',
-  GitIDEMenus in 'GitIDEMenus.pas';
+  GitIDEMenus in 'GitIDEMenus.pas',
+  GitClientCheckout in 'GitClientCheckout.pas' {GitCheckoutDialog},
+  GitIDECheckout in 'GitIDECheckout.pas',
+  GitUIConst in 'GitUIConst.pas',
+  GitClientProjectSelect in 'GitClientProjectSelect.pas' {GitProjectSelectDialog},
+  GitImages in 'GitImages.pas' {GitImageModule: TDataModule},
+  GitClientUpdate in 'GitClientUpdate.pas' {GitUpdateDialog};
 
 end.
 

@@ -68,7 +68,7 @@ var
 implementation
 
 uses
-  ComObj, ShellAPI;
+  ComObj, ShellAPI, VerInsResources;
 
 {$R *.dfm}
 

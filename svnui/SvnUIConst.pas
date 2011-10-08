@@ -71,6 +71,7 @@ resourcestring
   sAddNewChangeList = '<new changelist>';
   sCreateChangeListCaption = 'Create Changelist';
   sCreateChangeListPrompt = 'Enter a name for the changelist:';
+  sSelCountTotalCount = '%d files selected, %d files total';
 
 implementation
 

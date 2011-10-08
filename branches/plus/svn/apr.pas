@@ -1872,9 +1872,8 @@ begin
     LibFileName := BaseFileName
   else
   begin
-    if FileExists(Path + FileName) then
-      LibFileName := Path + FileName
-    else
+    LibFileName := IncludeTrailingPathDelimiter(Path) + FileName;
+    if not FileExists(LibFileName) then
       LibFileName := '';
   end;
   if LibFileName = '' then

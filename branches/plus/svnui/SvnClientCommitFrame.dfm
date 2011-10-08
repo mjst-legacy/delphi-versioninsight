@@ -115,6 +115,15 @@ object SvnCommitFrame: TSvnCommitFrame
       Height = 13
       Caption = 'Comment'
     end
+    object SelCountTotalCount: TLabel
+      Left = 485
+      Top = 6
+      Width = 96
+      Height = 13
+      Alignment = taRightJustify
+      Anchors = [akTop, akRight]
+      Caption = 'SelCountTotalCount'
+    end
     object Comment: TMemo
       Left = 8
       Top = 22

@@ -38,16 +38,104 @@ uses
   {$IFDEF TOOLSPROAPI}
   ToolsProAPI,
   {$ENDIF TOOLSPROAPI}
-  Classes, ToolsAPI, GitIDEClient;
+  Classes, ToolsAPI, GitIDEClient, GitClient;
 
+const
+  sPMVGitParent = 'GitParent';
+
+//  Menu Positions
+const
+  // Project Menu Items
+  // Commit
+  pmmpParentCommitSvnMenu = pmmpUserVersionControl + 10;
+  pmmpRootDirCommitSvnMenu = pmmpUserVersionControl + 20;
+  pmmpProjectDirCommitSvnMenu = pmmpUserVersionControl + 30;
+  pmmpExpicitFilesCommitSvnMenu = pmmpUserVersionControl + 40;
+  // Update
+  pmmpParentUpdateSvnMenu = pmmpUserVersionControl + 50;
+  pmmpRootDirUpdateSvnMenu = pmmpUserVersionControl + 60;
+  pmmpProjectDirUpdateSvnMenu = pmmpUserVersionControl + 70;
+  pmmpExpicitFilesUpdateSvnMenu = pmmpUserVersionControl + 80;
+  // Log
+  pmmpParentLogSvnMenu = pmmpUserVersionControl + 90;
+  pmmpRootDirLogSvnMenu = pmmpUserVersionControl + 100;
+  pmmpProjectDirLogSvnMenu = pmmpUserVersionControl + 110;
+  // Clean
+  pmmpParentCleanSvnMenu = pmmpUserVersionControl + 120;
+  pmmpRootDirCleanSvnMenu = pmmpUserVersionControl + 130;
+  pmmpProjectDirCleanSvnMenu = pmmpUserVersionControl + 140;
+  // Repository Browser
+  pmmpParentRepoSvnMenu = pmmpUserVersionControl + 150;
+  pmmpRootDirRepoSvnMenu = pmmpUserVersionControl + 160;
+  pmmpProjectDirRepoSvnMenu = pmmpUserVersionControl + 170;
+  // File Menu Items
+  pmmpFileCommitSvnMenu = pmmpUserVersionControl + 1010;
+  pmmpFileUpdateSvnMenu = pmmpUserVersionControl + 1020;
+  pmmpFileRepoSvnMenu = pmmpUserVersionControl + 1030;
+
+
+type
+  TGitMenu = class(TInterfacedObject, IOTALocalMenu, IOTAProjectManagerMenu)
+  protected
+    FCaption: string;
+    FChecked: Boolean;
+    FEnabled: Boolean;
+    FHelpContext: Integer;
+    FIsMultiSelectable: Boolean;
+    FName: string;
+    FParent: string;
+    FPosition: Integer;
+    FGitIDEClient: TGitIDEClient;
+    FVerb: string;
+
+    {IOTANotifier}
+    procedure AfterSave;
+    procedure BeforeSave;
+    procedure Destroyed;
+    procedure Modified;
+
+    {IOTALocalMenu}
+    function GetCaption: string;
+    function GetChecked: Boolean;
+    function GetEnabled: Boolean;
+    function GetHelpContext: Integer;
+    function GetName: string;
+    function GetParent: string;
+    function GetPosition: Integer;
+    function GetVerb: string;
+    procedure SetCaption(const Value: string);
+    procedure SetChecked(Value: Boolean);
+    procedure SetEnabled(Value: Boolean);
+    procedure SetHelpContext(Value: Integer);
+    procedure SetName(const Value: string);
+    procedure SetParent(const Value: string);
+    procedure SetPosition(Value: Integer);
+    procedure SetVerb(const Value: string);
+
+    { IOTAProjectManagerMenu }
+    function GetIsMultiSelectable: Boolean;
+    procedure SetIsMultiSelectable(Value: Boolean);
+    procedure Execute(const MenuContextList: IInterfaceList); virtual;
+    function PreExecute(const MenuContextList: IInterfaceList): Boolean;
+    function PostExecute(const MenuContextList: IInterfaceList): Boolean;
+  public
+    constructor Create(AGitIDEClient: TGitIDEClient);
+  end;
+
+  TRootType = (rtRootDir, rtProjectDir, rtExpicitFiles);
+
+procedure BuildFileList(const MenuContextList: IInterfaceList;
+  const DirectoryList: TStringList; const GitClient: TGitClient;
+  RootType: TRootType; var ProjectFound: Boolean);
 procedure RegisterMenus(AGitIDEClient: TGitIDEClient);
 procedure UnRegisterMenus;
+function RootDirectory(const GitClient: TGitClient; const Path: string): string;
 
 
 implementation
 
 uses
-  SysUtils, Dialogs, GitIDEConst, GitIDECheckout, GitIDEIcons;
+  SysUtils, Dialogs, GitIDEConst, GitIDECommit, GitIDELog, GitIDECheckout, GitIDEIcons;
 
 const
   sGitName = 'versioninsight.git';
@@ -87,6 +175,227 @@ type
     constructor Create(const GitIDEClient: TGitIDEClient);
     destructor Destroy; override;
   end;
+
+  TParentGitMenu = class(TGitMenu)
+  public
+    constructor Create;
+  end;
+
+var
+  PMMSvnParent, PMMParentCommit, PMMRootDirCommit, PMMProjectDirCommit,
+  PMMExpicitFilesCommit, PMMFileCommit, PMMParentUpdate, PMMRootDirUpdate,
+  PMMProjectDirUpdate, PMMExpicitFilesUpdate, PMMFileUpdate,
+  PMMParentCleanSvnMenu, PMMRootDirCleanSvnMenu, PMMProjectDirCleanSvnMenu,
+  PMMParentLogGitMenu, PMMRootDirLogGitMenu, PMMProjectDirLogGitMenu,
+  PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu: IOTAProjectManagerMenu;
+
+function RootDirectory(const GitClient: TGitClient; const Path: string): string;
+var
+  RepoPath: string;
+  TempPath: string;
+begin
+  Result := ExtractFilePath(Path);
+  RepoPath := GitClient.FindRepositoryRoot(Result);
+  if RepoPath = '' then
+  else
+  begin
+    TempPath := ExtractFilePath(ExcludeTrailingPathDelimiter(Result));
+    while RepoPath = GitClient.FindRepositoryRoot(TempPath) do
+    begin
+      Result := TempPath;
+      TempPath := ExtractFilePath(ExcludeTrailingPathDelimiter(Result));
+    end;
+  end;
+end;
+
+procedure BuildFileList(const MenuContextList: IInterfaceList;
+  const DirectoryList: TStringList; const GitClient: TGitClient;
+  RootType: TRootType; var ProjectFound: Boolean);
+var
+  I: Integer;
+  MenuContext: IOTAMenuContext;
+  Project: IOTAProject;
+  TempProject: IOTAProject;
+  Path: string;
+  Module: IOTAModule;
+begin
+  ProjectFound := False;
+  for I := 0 to MenuContextList.Count - 1 do
+  begin
+    Project := (MenuContextList[I] as IOTAProjectMenuContext).Project;
+    if Supports(MenuContextList[I], IOTAMenuContext, MenuContext) then
+      if FileExists(MenuContext.Ident) then
+      begin
+        // If it is a project
+        if Supports((BorlandIDEServices as IOTAModuleServices).FindModule(MenuContext.Ident), IOTAProject, TempProject) then
+        begin
+          ProjectFound := True;
+          case RootType of
+            rtRootDir:
+              begin
+                Path := RootDirectory(GitClient, MenuContext.Ident);
+                if Path = '' then
+                  Path := ExtractFilePath(MenuContext.Ident);
+                DirectoryList.Add(Path);
+              end;
+            rtProjectDir: DirectoryList.Add(ExtractFilePath(MenuContext.Ident));
+            rtExpicitFiles: TempProject.GetCompleteFileList(DirectoryList);
+          end;
+        end
+        else
+        begin
+          if Project <> nil then
+            Project.GetAssociatedFiles(MenuContext.Ident, DirectoryList)
+          else
+          begin
+            Module := (BorlandIDEServices as IOTAModuleServices).FindModule(MenuContext.Ident);
+            if Module <> nil then
+              Module.GetAssociatedFilesFromModule(DirectoryList)
+            else
+              DirectoryList.Add(MenuContext.Ident);
+          end;
+        end;
+      end;
+  end;
+end;
+
+{ TGitMenu }
+
+procedure TGitMenu.AfterSave;
+begin
+
+end;
+
+procedure TGitMenu.BeforeSave;
+begin
+
+end;
+
+constructor TGitMenu.Create(AGitIDEClient: TGitIDEClient);
+begin
+  inherited Create;
+  FGitIDEClient := AGitIDEClient;
+  FParent := '';
+  FChecked := False;
+  FEnabled := True;
+  FIsMultiSelectable := True;
+  FName := '';
+end;
+
+procedure TGitMenu.Destroyed;
+begin
+
+end;
+
+procedure TGitMenu.Execute(const MenuContextList: IInterfaceList);
+begin
+
+end;
+
+function TGitMenu.GetCaption: string;
+begin
+  Result := FCaption;
+end;
+
+function TGitMenu.GetChecked: Boolean;
+begin
+  Result := FChecked;
+end;
+
+function TGitMenu.GetEnabled: Boolean;
+begin
+  Result := FEnabled;
+end;
+
+function TGitMenu.GetHelpContext: Integer;
+begin
+  Result := FHelpContext;
+end;
+
+function TGitMenu.GetIsMultiSelectable: Boolean;
+begin
+  Result := FIsMultiSelectable;
+end;
+
+function TGitMenu.GetName: string;
+begin
+  Result := FName;
+end;
+
+function TGitMenu.GetParent: string;
+begin
+  Result := FParent;
+end;
+
+function TGitMenu.GetPosition: Integer;
+begin
+  Result := FPosition;
+end;
+
+function TGitMenu.GetVerb: string;
+begin
+  Result := FVerb;
+end;
+
+procedure TGitMenu.Modified;
+begin
+
+end;
+
+function TGitMenu.PostExecute(const MenuContextList: IInterfaceList): Boolean;
+begin
+  Result := True;
+end;
+
+function TGitMenu.PreExecute(const MenuContextList: IInterfaceList): Boolean;
+begin
+  Result := True;
+end;
+
+procedure TGitMenu.SetCaption(const Value: string);
+begin
+  FCaption := Value;
+end;
+
+procedure TGitMenu.SetChecked(Value: Boolean);
+begin
+  FChecked := Value;
+end;
+
+procedure TGitMenu.SetEnabled(Value: Boolean);
+begin
+  FEnabled := Value;
+end;
+
+procedure TGitMenu.SetHelpContext(Value: Integer);
+begin
+  FHelpContext := Value;
+end;
+
+procedure TGitMenu.SetIsMultiSelectable(Value: Boolean);
+begin
+  FIsMultiSelectable := Value;
+end;
+
+procedure TGitMenu.SetName(const Value: string);
+begin
+  FName := Value;
+end;
+
+procedure TGitMenu.SetParent(const Value: string);
+begin
+  FParent := Value;
+end;
+
+procedure TGitMenu.SetPosition(Value: Integer);
+begin
+  FPosition := Value;
+end;
+
+procedure TGitMenu.SetVerb(const Value: string);
+begin
+  FVerb := Value;
+end;
 
 { TGitNotifier }
 
@@ -257,7 +566,49 @@ end;
 procedure TGitNotifier.ProjectManagerMenu(const Project: IOTAProject;
   const IdentList: TStrings; const ProjectManagerMenuList: IInterfaceList;
   IsMultiSelect: Boolean);
+
+  function ContainersProject: Boolean;
+  var
+    I: Integer;
+  begin
+    Result := False;
+    for I := 0 to IdentList.Count - 1 do
+      if Supports((BorlandIDEServices as IOTAModuleServices).FindModule(IdentList[I]), IOTAProject) then
+      begin
+        Result := True;
+        Break;
+      end;
+  end;
+
 begin
+  //ProjectManagerMenuList.Add(PMMSvnParent);//so far the file menu doesn't exist -> add root item only in the Project branch
+  if ContainersProject then
+  begin
+    ProjectManagerMenuList.Add(PMMSvnParent);
+    ProjectManagerMenuList.Add(PMMParentCommit);
+    ProjectManagerMenuList.Add(PMMRootDirCommit);
+    ProjectManagerMenuList.Add(PMMProjectDirCommit);
+    ProjectManagerMenuList.Add(PMMExpicitFilesCommit);
+    ProjectManagerMenuList.Add(PMMParentUpdate);
+    ProjectManagerMenuList.Add(PMMRootDirUpdate);
+    ProjectManagerMenuList.Add(PMMProjectDirUpdate);
+    ProjectManagerMenuList.Add(PMMExpicitFilesUpdate);
+    ProjectManagerMenuList.Add(PMMParentLogGitMenu);
+    ProjectManagerMenuList.Add(PMMRootDirLogGitMenu);
+    ProjectManagerMenuList.Add(PMMProjectDirLogGitMenu);
+    ProjectManagerMenuList.Add(PMMParentCleanSvnMenu);
+    ProjectManagerMenuList.Add(PMMRootDirCleanSvnMenu);
+    ProjectManagerMenuList.Add(PMMProjectDirCleanSvnMenu);
+    ProjectManagerMenuList.Add(PMMParentRepo);
+    ProjectManagerMenuList.Add(PMMRootDirRepo);
+    ProjectManagerMenuList.Add(PMMProjectDirRepo);
+  end
+  else
+  begin
+    ProjectManagerMenuList.Add(PMMFileCommit);
+    ProjectManagerMenuList.Add(PMMFileUpdate);
+    ProjectManagerMenuList.Add(PMMFileRepoSvnMenu);
+  end;
 end;
 
 var
@@ -266,11 +617,68 @@ var
 procedure RegisterMenus(AGitIDEClient: TGitIDEClient);
 begin
   NotifierIndex := (BorlandIDEServices as IOTAVersionControlServices).AddNotifier(TGitNotifier.Create(AGitIDEClient));
+  PMMSvnParent := TParentGitMenu.Create;
+  PMMParentCommit := TParentCommitGitMenu.Create;
+  PMMRootDirCommit := TRootDirCommitGitMenu.Create(AGitIDEClient);
+  PMMProjectDirCommit := TProjectDirCommitGitMenu.Create(AGitIDEClient);
+  //PMMExpicitFilesCommit := TExpicitFilesCommitGitMenu.Create(AGitIDEClient);
+  {//TODO:1
+  PMMFileCommit := TFileCommitSvnMenu.Create(ASvnIDEClient);
+  PMMParentUpdate := TParentUpdateSvnMenu.Create;
+  PMMRootDirUpdate := TRootDirUpdateSvnMenu.Create(ASvnIDEClient);
+  PMMProjectDirUpdate := TProjectDirUpdateSvnMenu.Create(ASvnIDEClient);
+  PMMExpicitFilesUpdate := TExpicitFilesUpdateSvnMenu.Create(ASvnIDEClient);
+  PMMFileUpdate := TFileUpdateSvnMenu.Create(ASvnIDEClient);
+  PMMParentCleanSvnMenu := TParentCleanSvnMenu.Create;
+  PMMRootDirCleanSvnMenu := TRootDirCleanSvnMenu.Create(ASvnIDEClient);
+  PMMProjectDirCleanSvnMenu := TProjectDirCleanSvnMenu.Create(ASvnIDEClient);
+  }
+  PMMParentLogGitMenu := TParentLogGitMenu.Create;
+  PMMRootDirLogGitMenu := TRootDirLogGitMenu.Create(AGitIDEClient);
+  PMMProjectDirLogGitMenu := TProjectDirLogGitMenu.Create(AGitIDEClient);
+  {
+  PMMParentRepo := TParentRepoSvnMenu.Create;
+  PMMRootDirRepo := TRootDirRepoSvnMenu.Create(ASvnIDEClient);
+  PMMProjectDirRepo := TProjectDirRepoSvnMenu.Create(ASvnIDEClient);
+  PMMFileRepoSvnMenu := TFileRepoSvnMenu.Create(ASvnIDEClient);
+  }
 end;
 
 procedure UnRegisterMenus;
 begin
   (BorlandIDEServices as IOTAVersionControlServices).RemoveNotifier(NotifierIndex);
+  PMMSvnParent := nil;
+  PMMParentCommit := nil;
+  PMMRootDirCommit := nil;
+  PMMProjectDirCommit := nil;
+  PMMExpicitFilesCommit := nil;
+  PMMFileCommit := nil;
+  PMMParentUpdate := nil;
+  PMMRootDirUpdate := nil;
+  PMMProjectDirUpdate := nil;
+  PMMExpicitFilesUpdate := nil;
+  PMMFileUpdate := nil;
+  PMMParentCleanSvnMenu := nil;
+  PMMRootDirCleanSvnMenu := nil;
+  PMMProjectDirCleanSvnMenu := nil;
+  PMMParentLogGitMenu := nil;
+  PMMRootDirLogGitMenu := nil;
+  PMMProjectDirLogGitMenu := nil;
+  PMMParentRepo := nil;
+  PMMRootDirRepo := nil;
+  PMMProjectDirRepo := nil;
+  PMMFileRepoSvnMenu := nil;
+end;
+
+{ TParentGitMenu }
+
+constructor TParentGitMenu.Create;
+begin
+  inherited Create(nil);
+  FCaption := sPMMGitParent;
+  FVerb := sPMVGitParent;
+  FPosition := pmmpUserVersionControl;
+  FHelpContext := 0;
 end;
 
 end.

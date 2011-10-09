@@ -29,6 +29,11 @@ interface
 var
   //Project Manager/Editor popup menu
   GitImageIndex: Integer = -1;
+  CommitImageIndex: Integer = -1;
+  LogImageIndex: Integer = -1;
+
+  //Message View
+  GitMessageViewImageIndex: Integer = -1;
 
 procedure RegisterImages;
 
@@ -76,6 +81,17 @@ begin
       GitImageIndex := RegisterMenuIconFromFile(GitIconFileName, 'git_menuicon')
     else
       GitImageIndex := RegisterMenuIconFromModule(GitIconFileName, 'git_menuicon', 'MAINICON');
+  end;
+
+  CommitImageIndex := RegisterMenuIcon('tsvn_menucommit');
+  LogImageIndex := RegisterMenuIcon('tsvn_menulog');
+
+  if GitIconFileName <> '' then
+  begin
+    if SameText(ExtractFileExt(GitIconFileName), '.ico') then
+      GitMessageViewImageIndex := RegisterMessageViewIconFromFile(GitIconFileName, 'git_menuicon')
+    else
+      GitMessageViewImageIndex := RegisterMessageViewIconFromModule(GitIconFileName, 'git_menuicon', 'MAINICON');
   end;
 end;
 

@@ -47,6 +47,8 @@ type
   end;
 
   TParentLogGitMenu = class(TGitMenu)
+  protected
+    function GetImageIndex: Integer; override;
   public
     constructor Create;
   end;
@@ -61,12 +63,20 @@ type
     constructor Create(AGitIDEClient: TGitIDEClient);
   end;
 
+  TDirLogGitMenu = class(TBaseLogGitMenu)
+  protected
+    function GetImageIndex: Integer; override;
+  public
+    constructor Create(AGitIDEClient: TGitIDEClient);
+  end;
+
  procedure Register;
 
 implementation
 
 uses SysUtils, GitIDEConst, ToolsApi, GitClientLog, GitClient, DesignIntf, Forms,
-  GitUITypes, GitIDEUtils, ExtCtrls, Graphics, GitIDETypes, RegularExpressions;
+  GitUITypes, GitIDEUtils, ExtCtrls, Graphics, GitIDETypes, RegularExpressions,
+  GitIDEIcons;
 
 const
   sPMVLogParent = 'SvnLogParent';
@@ -74,6 +84,7 @@ const
   sPMVRootDirLog = 'RootDirLog';
   sPMVProjectDirLog = 'ProjectDirLog';
   sPMVExpicitFilesLog = 'ExpicitFilesLog';
+  sPMVDirLog = 'DirLog';
 
 var
   LogView: INTACustomEditorView;
@@ -142,6 +153,9 @@ begin
     if FRootType = rtProjectDir then
       RootPath := ExtractFilePath(MenuContext.Ident)
     else
+    if FRootType = rtDir then
+      RootPath := IncludeTrailingPathDelimiter(MenuContext.Ident)
+    else
       RootPath := '';
     //TODO: check if path is not empty and is versioned
     //TODO: check if there is already a Log view
@@ -185,6 +199,24 @@ begin
   FVerb := sPMVProjectDirLog;
   FPosition := pmmpProjectDirLogSvnMenu;
   FHelpContext := 0;
+end;
+
+{ TDirLogGitMenu }
+
+constructor TDirLogGitMenu.Create(AGitIDEClient: TGitIDEClient);
+begin
+  inherited Create(AGitIDEClient);
+  FRootType := rtDir;
+  FParent := sPMVGitParent;
+  FCaption := sPMMLog;
+  FVerb := sPMVDirLog;
+  FPosition := pmmpProjectDirLogSvnMenu;
+  FHelpContext := 0;
+end;
+
+function TDirLogGitMenu.GetImageIndex: Integer;
+begin
+  Result := LogImageIndex;
 end;
 
 { TLogView }
@@ -434,6 +466,11 @@ end;
 procedure Register;
 begin
   (BorlandIDEServices as IOTAEditorViewServices).RegisterEditorView(sLogView, GetView);
+end;
+
+function TParentLogGitMenu.GetImageIndex: Integer;
+begin
+  Result := LogImageIndex;
 end;
 
 initialization

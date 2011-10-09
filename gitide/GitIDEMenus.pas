@@ -75,7 +75,8 @@ const
 
 
 type
-  TGitMenu = class(TInterfacedObject, IOTALocalMenu, IOTAProjectManagerMenu)
+  TGitMenu = class(TInterfacedObject, IOTALocalMenu, IOTAProjectManagerMenu
+    {$IFDEF TOOLSPROAPI}, IOTAProProjectManagerMenu155{$ENDIF})
   protected
     FCaption: string;
     FChecked: Boolean;
@@ -118,11 +119,14 @@ type
     procedure Execute(const MenuContextList: IInterfaceList); virtual;
     function PreExecute(const MenuContextList: IInterfaceList): Boolean;
     function PostExecute(const MenuContextList: IInterfaceList): Boolean;
+
+    { IOTAProProjectManagerMenu155 }
+    function GetImageIndex: Integer; virtual;
   public
     constructor Create(AGitIDEClient: TGitIDEClient);
   end;
 
-  TRootType = (rtRootDir, rtProjectDir, rtExpicitFiles);
+  TRootType = (rtRootDir, rtProjectDir, rtExpicitFiles, rtDir);
 
 procedure BuildFileList(const MenuContextList: IInterfaceList;
   const DirectoryList: TStringList; const GitClient: TGitClient;
@@ -177,6 +181,8 @@ type
   end;
 
   TParentGitMenu = class(TGitMenu)
+  protected
+    function GetImageIndex: Integer; override;
   public
     constructor Create;
   end;
@@ -188,6 +194,8 @@ var
   PMMParentCleanSvnMenu, PMMRootDirCleanSvnMenu, PMMProjectDirCleanSvnMenu,
   PMMParentLogGitMenu, PMMRootDirLogGitMenu, PMMProjectDirLogGitMenu,
   PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu: IOTAProjectManagerMenu;
+
+  FBMMSvnParent, FBMMCommit, FBMMLog: IOTAProjectManagerMenu;
 
 function RootDirectory(const GitClient: TGitClient; const Path: string): string;
 var
@@ -222,40 +230,48 @@ begin
   ProjectFound := False;
   for I := 0 to MenuContextList.Count - 1 do
   begin
-    Project := (MenuContextList[I] as IOTAProjectMenuContext).Project;
-    if Supports(MenuContextList[I], IOTAMenuContext, MenuContext) then
-      if FileExists(MenuContext.Ident) then
-      begin
-        // If it is a project
-        if Supports((BorlandIDEServices as IOTAModuleServices).FindModule(MenuContext.Ident), IOTAProject, TempProject) then
+    if RootType = rtDir then
+    begin
+      if Supports(MenuContextList[I], IOTAMenuContext, MenuContext) then
+        DirectoryList.Add(IncludeTrailingPathDelimiter(MenuContext.Ident));
+    end
+    else
+    begin
+      Project := (MenuContextList[I] as IOTAProjectMenuContext).Project;
+      if Supports(MenuContextList[I], IOTAMenuContext, MenuContext) then
+        if FileExists(MenuContext.Ident) then
         begin
-          ProjectFound := True;
-          case RootType of
-            rtRootDir:
-              begin
-                Path := RootDirectory(GitClient, MenuContext.Ident);
-                if Path = '' then
-                  Path := ExtractFilePath(MenuContext.Ident);
-                DirectoryList.Add(Path);
-              end;
-            rtProjectDir: DirectoryList.Add(ExtractFilePath(MenuContext.Ident));
-            rtExpicitFiles: TempProject.GetCompleteFileList(DirectoryList);
-          end;
-        end
-        else
-        begin
-          if Project <> nil then
-            Project.GetAssociatedFiles(MenuContext.Ident, DirectoryList)
+          // If it is a project
+          if Supports((BorlandIDEServices as IOTAModuleServices).FindModule(MenuContext.Ident), IOTAProject, TempProject) then
+          begin
+            ProjectFound := True;
+            case RootType of
+              rtRootDir:
+                begin
+                  Path := RootDirectory(GitClient, MenuContext.Ident);
+                  if Path = '' then
+                    Path := ExtractFilePath(MenuContext.Ident);
+                  DirectoryList.Add(Path);
+                end;
+              rtProjectDir: DirectoryList.Add(ExtractFilePath(MenuContext.Ident));
+              rtExpicitFiles: TempProject.GetCompleteFileList(DirectoryList);
+            end;
+          end
           else
           begin
-            Module := (BorlandIDEServices as IOTAModuleServices).FindModule(MenuContext.Ident);
-            if Module <> nil then
-              Module.GetAssociatedFilesFromModule(DirectoryList)
+            if Project <> nil then
+              Project.GetAssociatedFiles(MenuContext.Ident, DirectoryList)
             else
-              DirectoryList.Add(MenuContext.Ident);
+            begin
+              Module := (BorlandIDEServices as IOTAModuleServices).FindModule(MenuContext.Ident);
+              if Module <> nil then
+                Module.GetAssociatedFilesFromModule(DirectoryList)
+              else
+                DirectoryList.Add(MenuContext.Ident);
+            end;
           end;
         end;
-      end;
+    end;
   end;
 end;
 
@@ -310,6 +326,11 @@ end;
 function TGitMenu.GetHelpContext: Integer;
 begin
   Result := FHelpContext;
+end;
+
+function TGitMenu.GetImageIndex: Integer;
+begin
+  Result := -1;
 end;
 
 function TGitMenu.GetIsMultiSelectable: Boolean;
@@ -448,7 +469,13 @@ end;
 procedure TGitNotifier.FileBrowserMenu(const IdentList: TStrings;
   const FileBrowserMenuList: IInterfaceList; IsMultiSelect: Boolean);
 begin
-//there is no menu support for Git yet
+  if (IdentList.Count = 1) and DirectoryExists(IdentList[0]) and
+    IDEClient.GitClient.IsVersioned(IdentList[0]) then
+  begin
+    FileBrowserMenuList.Add(FBMMSvnParent);
+    FileBrowserMenuList.Add(FBMMCommit);
+    FileBrowserMenuList.Add(FBMMLog);
+  end;
 end;
 
 function TGitNotifier.GetAddNewProjectCaption: string;
@@ -642,6 +669,10 @@ begin
   PMMProjectDirRepo := TProjectDirRepoSvnMenu.Create(ASvnIDEClient);
   PMMFileRepoSvnMenu := TFileRepoSvnMenu.Create(ASvnIDEClient);
   }
+
+  FBMMSvnParent := TParentGitMenu.Create;
+  FBMMCommit := TDirCommitGitMenu.Create(AGitIDEClient);
+  FBMMLog := TDirLogGitMenu.Create(AGitIDEClient);
 end;
 
 procedure UnRegisterMenus;
@@ -668,6 +699,10 @@ begin
   PMMRootDirRepo := nil;
   PMMProjectDirRepo := nil;
   PMMFileRepoSvnMenu := nil;
+
+  FBMMSvnParent := nil;
+  FBMMCommit := nil;
+  FBMMLog := nil;
 end;
 
 { TParentGitMenu }
@@ -679,6 +714,11 @@ begin
   FVerb := sPMVGitParent;
   FPosition := pmmpUserVersionControl;
   FHelpContext := 0;
+end;
+
+function TParentGitMenu.GetImageIndex: Integer;
+begin
+  Result := GitImageIndex;
 end;
 
 end.

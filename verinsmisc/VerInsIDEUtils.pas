@@ -31,6 +31,8 @@ function RegisterMenuIconFromFile(const AFileName, AIdent: string): Integer;
 function RegisterMenuIconFromModule(const AFileName, AIdent: string; ARessource: string): Integer;
 function RegisterMenuIconFromModuleResourceID(const AFileName, AIdent: string; ARessourceID: Integer): Integer;
 function RegisterMessageViewIcon(const AResourceName: string): Integer;
+function RegisterMessageViewIconFromFile(const AFileName, AIdent: string): Integer;
+function RegisterMessageViewIconFromModule(const AFileName, AIdent: string; ARessource: string): Integer;
 function RegisterMessageViewIconFromModuleResourceID(const AFileName, AIdent: string; ARessourceID: Integer): Integer;
 
 implementation
@@ -170,6 +172,66 @@ begin
   {$ELSE ~TOOLSPROAPI}
   Result := -1;
   {$ENDIF ~TOOLSPROAPI}
+end;
+
+function RegisterMessageViewIconFromFile(const AFileName, AIdent: string): Integer;
+{$IFDEF TOOLSPROAPI}
+var
+  ImageList: TImageList;
+  Ico: TIcon;
+{$ENDIF ~TOOLSPROAPI}
+begin
+  Result := -1;
+  {$IFDEF TOOLSPROAPI}
+  ImageList := TImageList.Create(nil);
+  Ico := TIcon.Create;
+  try
+    Ico.LoadFromFile(AFileName);
+    ImageList.AddIcon(Ico);
+    if (ImageList.Count > 0) and Supports(BorlandIDEServices, INTAProMessageServices) then
+      Result := (BorlandIDEServices as INTAProMessageServices).AddImages(ImageList, AIdent);
+  finally
+    Ico.Free;
+    ImageList.Free;
+  end;
+  {$ENDIF TOOLSPROAPI}
+end;
+
+function RegisterMessageViewIconFromModule(const AFileName, AIdent: string; ARessource: string): Integer;
+{$IFDEF TOOLSPROAPI}
+var
+  Module: HMODULE;
+var
+  ImageList: TImageList;
+  Ico: TIcon;
+{$ENDIF ~TOOLSPROAPI}
+begin
+  Result := -1;
+  {$IFDEF TOOLSPROAPI}
+  if FileExists(AFileName) then
+  begin
+    Module := LoadLibraryEx(PChar(AFileName), 0, LOAD_LIBRARY_AS_DATAFILE);
+    try
+      if Module <> 0 then
+      begin
+        ImageList := TImageList.Create(nil);
+        Ico := TIcon.Create;
+        try
+          Ico.LoadFromResourceName(Module, ARessource);
+          ImageList.AddIcon(Ico);
+          if (ImageList.Count > 0) and Supports(BorlandIDEServices, INTAProMessageServices) then
+            Result := (BorlandIDEServices as INTAProMessageServices).AddImages(ImageList, AIdent);
+        finally
+          Ico.Free;
+          ImageList.Free;
+        end;
+      end;
+    finally
+      if Module <> 0 then
+        FreeLibrary(Module);
+    end;
+  end;
+  {$ENDIF TOOLSPROAPI}
 end;
 
 function RegisterMessageViewIconFromModuleResourceID(const AFileName, AIdent: string; ARessourceID: Integer): Integer;

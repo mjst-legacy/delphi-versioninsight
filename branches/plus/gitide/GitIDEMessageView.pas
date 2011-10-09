@@ -35,6 +35,9 @@ unit GitIDEMessageView;
 interface
 
 uses
+  {$IFDEF TOOLSPROAPI}
+  ToolsProAPI,
+  {$ENDIF TOOLSPROAPI}
   ToolsAPI;
 
 type
@@ -91,7 +94,7 @@ var
 implementation
 
 uses
-  SysUtils, GitIDEConst;
+  SysUtils, GitIDEConst, GitIDEIcons;
 
 { TSvnMessage }
 
@@ -172,7 +175,12 @@ begin
     FMessageGroup := (BorlandIDEServices as IOTAMessageServices).GetGroup(sGit);
     if not Assigned(FMessageGroup) then
     begin
-      FMessageGroup := (BorlandIDEServices as IOTAMessageServices).AddMessageGroup(sGit);
+      {$IFDEF TOOLSPROAPI}
+      if Supports(BorlandIDEServices, IOTAProMessageServices) then
+        FMessageGroup := (BorlandIDEServices as IOTAProMessageServices).AddMessageGroup(sGit, GitMessageViewImageIndex)
+      else
+      {$ENDIF TOOLSPROAPI}
+        FMessageGroup := (BorlandIDEServices as IOTAMessageServices).AddMessageGroup(sGit);
       FMessageGroup.AutoScroll := True;
     end;
   end;

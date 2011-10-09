@@ -47,6 +47,8 @@ type
   end;
 
   TParentCommitGitMenu = class(TGitMenu)
+  protected
+    function GetImageIndex: Integer; override;
   public
     constructor Create;
   end;
@@ -71,6 +73,13 @@ type
     constructor Create(ASvnIDEClient: TGitIDEClient);
   end;
 
+  TDirCommitGitMenu = class(TBaseCommitGitMenu)
+  protected
+    function GetImageIndex: Integer; override;
+  public
+    constructor Create(ASvnIDEClient: TGitIDEClient);
+  end;
+
   procedure DoCommit(const SvnClient: TGitClient; const CommitList: TStringList;
     const Comment: string; const RecentComments: TStringList; ADeleteLocalHistory: Boolean);
 
@@ -85,7 +94,7 @@ implementation
 uses SysUtils, ToolsApi, Forms, DesignIntf, ComCtrls, Controls, GitIDEConst,
   GitClientCommitFrame, {svn_client, }FileHistoryAPI, IStreams,
   ActiveX, Dialogs, {SvnIDEClean,} GitIDEMessageView, Registry, GitUITypes,
-  GitIDEUtils, Graphics, IOUtils, Types;
+  GitIDEUtils, Graphics, IOUtils, Types, GitIDEIcons;
 
 const
   sPMVCommit = 'Commit';
@@ -94,6 +103,7 @@ const
   sPMVRootDirCommit = 'RootDirCommit';
   sPMVProjectDirCommit = 'ProjectDirCommit';
   sPMVExpicitFilesCommit = 'ExpicitFilesCommit';
+  sPMVDirCommit = 'DirCommit';
   sSubversion = 'Subversion';
   sRecentComments = 'RecentComments';
   sComment = 'Comment%d';
@@ -205,6 +215,11 @@ begin
   FHelpContext := 0;
 end;
 
+function TParentCommitGitMenu.GetImageIndex: Integer;
+begin
+  Result := CommitImageIndex;
+end;
+
 { TRootDirCommitGitMenu }
 
 constructor TRootDirCommitGitMenu.Create(ASvnIDEClient: TGitIDEClient);
@@ -255,6 +270,24 @@ begin
   FVerb := sPMVCommit;
   FPosition := pmmpFileCommitSvnMenu;
   FHelpContext := 0;
+end;
+
+{ TDirCommitGitMenu }
+
+constructor TDirCommitGitMenu.Create(ASvnIDEClient: TGitIDEClient);
+begin
+  inherited Create(ASvnIDEClient);
+  FRootType := rtDir;
+  FParent := sPMVGitParent;
+  FCaption := sPMMCommit;
+  FVerb := sPMVDirCommit;
+  FPosition := pmmpFileCommitSvnMenu;
+  FHelpContext := 0;
+end;
+
+function TDirCommitGitMenu.GetImageIndex: Integer;
+begin
+  Result := CommitImageIndex;
 end;
 
 { TCommit }

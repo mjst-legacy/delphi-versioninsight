@@ -11,10 +11,10 @@
 { WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for }
 { the specific language governing rights and limitations under the License.    }
 {                                                                              }
-{ The Original Code is GitIDEConst.pas.                                        }
+{ The Original Code is SvnClientProgress.pas.                                  }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2011 Uwe Schuster. All      }
+{ Portions created by Uwe Schuster are Copyright © 2010 Uwe Schuster. All      }
 { Rights Reserved.                                                             }
 {                                                                              }
 { Contributors:                                                                }
@@ -22,33 +22,46 @@
 {                                                                              }
 {******************************************************************************}
 
-unit GitIDEConst;
+unit GitClientProgress;
 
 interface
 
-resourcestring
-  sGit = 'Git';
-  sPMMGitParent = 'Git';
-  sPMMCommit = 'Commit';
-  sPMMLog = 'Show Log';
-  sPMMRootDir = 'From Repository Root';
-  sPMMProjectDir = 'From Project Directory';
-  sPMMExpicitFiles = 'Files in this Project';
-  sMenuOpenFromVersionControl = 'Open From Git (Clone)';
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ComCtrls;
 
-  sCommit = 'Commit';
-  sCommitCompleted = 'Commit completed at: %s';
-  sLog = 'Log';
-  sWorking = '-Working';
+type
+  TAbortCallBack = procedure of object;
 
-  SAuthor = 'Author: ';
-  STime = 'Time: ';
-  SComment = 'Comment: ';
+  TGitProgressDialog = class(TForm)
+    btnAbort: TButton;
+    ProgressBar1: TProgressBar;
+    lbInfo: TLabel;
+    procedure btnAbortClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+  private
+    { Private declarations }
+    FAbortCallBack: TAbortCallBack;
+  public
+    { Public declarations }
+    property AbortCallBack: TAbortCallBack read FAbortCallBack write FAbortCallBack;
+  end;
 
-  sCommitLoaded = 'An existing commit window was open. Please close it if you wish to start a new commit.';
-  sRetrievingFileRevision = 'Retrieving %s revision %s';
-  sSavingFileRevision = 'Saving %s revision %s';
+var
+  GitProgressDialog: TGitProgressDialog;
 
 implementation
+
+{$R *.dfm}
+
+procedure TGitProgressDialog.btnAbortClick(Sender: TObject);
+begin
+  FAbortCallBack;
+end;
+
+procedure TGitProgressDialog.FormCreate(Sender: TObject);
+begin
+  lbInfo.Caption := '';
+end;
 
 end.

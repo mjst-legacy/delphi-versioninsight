@@ -43,7 +43,19 @@ contains
   GitUIConst in 'GitUIConst.pas',
   GitClientProjectSelect in 'GitClientProjectSelect.pas' {GitProjectSelectDialog},
   GitImages in 'GitImages.pas' {GitImageModule: TDataModule},
-  GitClientUpdate in 'GitClientUpdate.pas' {GitUpdateDialog};
+  GitClientUpdate in 'GitClientUpdate.pas' {GitUpdateDialog},
+  GitClientCommitFrame in 'GitClientCommitFrame.pas' {GitCommitFrame: TFrame},
+  GitClientRecentComments in 'GitClientRecentComments.pas' {GitRecentCommentsDialog},
+  GitIDECommit in 'GitIDECommit.pas',
+  GitIDEMessageView in 'GitIDEMessageView.pas',
+  GitIDEUtils in 'GitIDEUtils.pas',
+  GitTree in 'GitTree.pas',
+  GitUITypes in 'GitUITypes.pas',
+  GitUIUtils in 'GitUIUtils.pas',
+  GitIDELog in 'GitIDELog.pas',
+  GitClientLog in 'GitClientLog.pas' {GitLogFrame: TFrame},
+  GitIDETypes in 'GitIDETypes.pas',
+  GitClientProgress in 'GitClientProgress.pas' {GitProgressDialog};
 
 end.
 

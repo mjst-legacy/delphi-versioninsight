@@ -39,6 +39,7 @@ type
     FAuthorEmail: string;
     FBlameItems: TObjectList<TGitBlameItem>;
     FBody: string;
+    FChangedFiles: TStringList;
     FDate: TDateTime;
     FHash: string;
     FSubject: string;
@@ -55,6 +56,7 @@ type
     property BlameCount: Integer read GetBlameCount;
     property BlameItems[AIndex: Integer]: TGitBlameItem read GetBlameItems;
     property Body: string read FBody;
+    property ChangedFiles: TStringList read FChangedFiles;
     property Date: TDateTime read FDate;
     property Hash: string read FHash;
     property Parent: TGitItem read FParent;
@@ -73,42 +75,78 @@ type
     property HistoryItem: TGitHistoryItem read FHistoryItem write FHistoryItem;
   end;
 
-  TGitStatus = (gsAdded, gsModified, gsNormal, gsUnknown);
+  TGitStatus = (gsAdded, gsModified, gsNormal, gsUnknown, gsUnversioned, gsDeleted);
 
   TGitClient = class;
 
+  IGitAsyncUpdate = interface
+    ['{E2833FCA-0595-4D85-9D03-19565B9C6433}']
+    procedure UpdateHistoryItems(GitItem: TGitItem; FirstNewIndex, LastNewIndex: Integer;
+      ForceUpdate: Boolean);
+    procedure Completed;
+  end;
+
   TGitItem = class(TObject)
   private
+    FAsyncUpdate: IGitAsyncUpdate;
     FFileName: string;
     FGitClient: TGitClient;
     FHistoryItems: TObjectList<TGitHistoryItem>;
+    FIsDirectory: Boolean;
     FStatus: TGitStatus;
+    FLogLimit: Integer;
+    FLogFirstRev: string;
+    FLogLastRev: string;
+    FIncludeChangedFiles: Boolean;
     function GetHistoryCount: Integer;
     function GetHistoryItems(AIndex: Integer): TGitHistoryItem;
+    function GetBaseHash: string;
   public
     constructor Create(AGitClient: TGitClient; const AFileName: string);
     destructor Destroy; override;
+    procedure AsyncReloadHistory;
+    function GetBaseFile: TBytes;
     procedure LoadHistory(AOnlyLast: Boolean = False);
     procedure LoadStatus;
+    property AsyncUpdate: IGitAsyncUpdate read FAsyncUpdate write FAsyncUpdate;
+    property BaseHash: string read GetBaseHash;
+    property FileName: string read FFileName;
     property HistoryCount: Integer read GetHistoryCount;
     property HistoryItems[AIndex: Integer]: TGitHistoryItem read GetHistoryItems;
+    property IncludeChangedFiles: Boolean read FIncludeChangedFiles write FIncludeChangedFiles;
+    property IsDirectory: Boolean read FIsDirectory;
+    property LogLimit: Integer read FLogLimit write FLogLimit;
+    property LogFirstRev: string read FLogFirstRev write FLogFirstRev;
+    property LogLastRev: string read FLogLastRev write FLogLastRev;
     property Status: TGitStatus read FStatus;
   end;
 
   TGitCloneCallBack = procedure(Sender: TObject; const AText: string; var Cancel: Boolean) of object;
+  TGitStatusCallback = procedure(Sender: TObject; Item: TGitItem; var Cancel: Boolean) of object;
+  TGitError = (geSuccess, geEmptyCommitMessage, geUnknown);
 
   TGitClient = class(TObject)
   private
     FCancel: Boolean;
     FCloneCallBack: TGitCloneCallBack;
     FGitExecutable: string;
+    FLastCommitInfoBranch: string;
+    FLastCommitInfoHash: string;
     procedure ExecuteTextHandler(const Text: string);
   public
     constructor Create;
+    function Add(const AFileName: string): Boolean;
     function Clone(const ASourcePath, ADestPath: string; ACallBack: TGitCloneCallBack = nil): Boolean;
+    function Commit(AFileList: TStringList; const AMessage: string; const AUser: string = ''): TGitError;
+    function FindRepositoryRoot(const APath: string): string;
+    function GetModifications(const APath: string; ACallBack: TGitStatusCallback): Boolean;
     function IsPathInWorkingCopy(const APath: string): Boolean;
     function IsVersioned(const AFileName: string): Boolean;
+    function Revert(const AFileName: string): Boolean;
+    procedure SaveFileContentToStream(const AFileName, ARevision: string; OutputStream: TStream);
     property GitExecutable: string read FGitExecutable write FGitExecutable;
+    property LastCommitInfoBranch: string read FLastCommitInfoBranch;
+    property LastCommitInfoHash: string read FLastCommitInfoHash;
   end;
 
 implementation
@@ -366,10 +404,12 @@ begin
   inherited Create;
   FParent := AParent;
   FBlameItems := TObjectList<TGitBlameItem>.Create;
+  FChangedFiles := TStringList.Create;
 end;
 
 destructor TGitHistoryItem.Destroy;
 begin
+  FChangedFiles.Free;
   FBlameItems.Free;
   inherited Destroy;
 end;
@@ -402,8 +442,8 @@ begin
     Output := '';
     Res := Execute(CmdLine, Output);
     FileContent := Output;
-    SetLength(Result,  Length(FileContent));
-    Move(FileContent[1], Result[0],  Length(FileContent));
+    SetLength(Result, Length(FileContent));
+    Move(FileContent[1], Result[0], Length(FileContent));
   finally
     SetCurrentDir(CurrentDir);
   end;
@@ -478,6 +518,49 @@ begin
   end;
 end;
 
+type
+  TGitHistoryThread = class(TThread)
+  private
+    FAsyncUpdate: IGitAsyncUpdate;
+    FGitItem: TGitItem;
+    FLastAdded: Integer;
+  protected
+    procedure Completed(Sender: TObject);
+    procedure Execute; override;
+  public
+    constructor Create(AGitItem: TGitItem; AsyncUpdate: IGitAsyncUpdate);
+  end;
+
+{ TGitHistoryThread }
+
+procedure TGitHistoryThread.Completed(Sender: TObject);
+begin
+  if (FLastAdded = 0) and (FGitItem.HistoryCount > 0) then
+  begin
+    FAsyncUpdate.UpdateHistoryItems(FGitItem, FLastAdded, 0, False);
+    Inc(FLastAdded);
+  end;
+  FAsyncUpdate.UpdateHistoryItems(FGitItem, FLastAdded, FGitItem.HistoryCount - 1, True);
+  FLastAdded := FGitItem.HistoryCount;
+  FAsyncUpdate.Completed;
+end;
+
+constructor TGitHistoryThread.Create(AGitItem: TGitItem; AsyncUpdate: IGitAsyncUpdate);
+begin
+  inherited Create(False);
+  FGitItem := AGitItem;
+  FreeOnTerminate := True;
+  FAsyncUpdate := AsyncUpdate;
+  FLastAdded := 0;
+  OnTerminate := Completed;
+end;
+
+procedure TGitHistoryThread.Execute;
+begin
+  NameThreadForDebugging('VerIns Git History Updater');
+  FGitItem.LoadHistory;
+end;
+
 { TGitItem }
 
 constructor TGitItem.Create(AGitClient: TGitClient; const AFileName: string);
@@ -486,13 +569,71 @@ begin
   FGitClient := AGitClient;
   FHistoryItems := TObjectList<TGitHistoryItem>.Create;
   FFileName := AFileName;
+  FIsDirectory := DirectoryExists(AFileName);
   FStatus := gsUnknown;
+  FLogLimit := -1;
+  FLogFirstRev := '';
+  FLogLastRev := '';
+  FIncludeChangedFiles := False;
 end;
 
 destructor TGitItem.Destroy;
 begin
   FHistoryItems.Free;
   inherited Destroy;
+end;
+
+procedure TGitItem.AsyncReloadHistory;
+begin
+  FHistoryItems.Clear;
+  TGitHistoryThread.Create(Self, FASyncUpdate);
+end;
+
+function TGitItem.GetBaseFile: TBytes;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+  FullFileName: string;
+  FileContent: AnsiString;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(FFileName));
+    CmdLine := FGitClient.GitExecutable + ' ls-files ' + QuoteFileName(ExtractFileName(FFileName)) + ' --full-name';
+    Res := Execute(CmdLine, Output);
+    FullFileName := Trim(Output);
+    CmdLine := FGitClient.GitExecutable + ' show ' + ':' + QuoteFileName(FullFileName);
+    Output := '';
+    Res := Execute(CmdLine, Output);
+    FileContent := Output;
+    SetLength(Result, Length(FileContent));
+    Move(FileContent[1], Result[0], Length(FileContent));
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+end;
+
+function TGitItem.GetBaseHash: string;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+begin
+  Result := '';
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(FFileName));
+    CmdLine := FGitClient.GitExecutable + ' log --max-count=1 --pretty=format:"H: %H" ' + QuoteFileName(ExtractFileName(FFileName));
+    Res := Execute(CmdLine, Output);
+    if (Res = 0) and (Pos('H: ', Output) = 1) then
+    begin
+      Delete(Output, 1, 3);
+      Result := Trim(Output);
+    end;
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
 end;
 
 function TGitItem.GetHistoryCount: Integer;
@@ -512,18 +653,41 @@ end;
 procedure TGitItem.LoadHistory(AOnlyLast: Boolean = False);
 var
   I, Res: Integer;
-  CmdLine, Output: string;
+  CmdLine, Output, LogFileName: string;
   OutputStrings: TStringList;
   HistoryItem: TGitHistoryItem;
   S, CurrentDir: string;
 begin
   CurrentDir := GetCurrentDir;
   try
-    SetCurrentDir(ExtractFilePath(FFileName));
+    if IsDirectory then
+    begin
+      SetCurrentDir(FFileName);
+      LogFileName := '.';
+    end
+    else
+    begin
+      SetCurrentDir(ExtractFilePath(FFileName));
+      LogFileName := ExtractFileName(FFileName);
+    end;
     CmdLine := FGitClient.GitExecutable + ' log ';
     if AOnlyLast then
-      CmdLine := CmdLine + '-1 ';
-    CmdLine := CmdLine + '--pretty=format:"H: %H%nAT: %at%nAN: %an%nAE: %ae%nS: %s%nB: %b" ' + QuoteFileName(ExtractFileName(FFileName));
+      CmdLine := CmdLine + '-1 '
+    else
+    if FLogLimit > 0 then
+      CmdLine := CmdLine + '-' + IntToStr(FLogLimit) + ' ';
+    if (FLogFirstRev <> '') and (FLogLastRev <> '') then
+      CmdLine := CmdLine + FLogFirstRev + '...' + FLogLastRev + ' '
+    else
+    if FLogFirstRev <> '' then
+      CmdLine := CmdLine + FLogFirstRev + ' '
+    else
+    if FLogFirstRev <> '' then
+      CmdLine := CmdLine + '...' + FLogLastRev + ' ';
+    if FIncludeChangedFiles then
+      CmdLine := CmdLine + '--pretty=format:"H: %H%nAT: %at%nAN: %an%nAE: %ae%nS: %s%nB: %b%nF:" --name-status ' + QuoteFileName(LogFileName)
+    else
+      CmdLine := CmdLine + '--pretty=format:"H: %H%nAT: %at%nAN: %an%nAE: %ae%nS: %s%nB: %b" ' + QuoteFileName(LogFileName);
     Res := Execute(CmdLine, Output);
   finally
     SetCurrentDir(CurrentDir);
@@ -573,6 +737,23 @@ begin
           begin
             Delete(S, 1, 3);
             HistoryItem.FBody := S;
+          end
+          else
+          if Pos('F:', S) = 1 then
+          begin
+            Inc(I);
+            while (I < OutputStrings.Count) and (Pos('H:', OutputStrings[I]) = 0) do
+            begin
+              S := OutputStrings[I];
+              if (Length(S) > 2) and CharInSet(S[1], ['M', 'A', 'D']) and (S[2] = #9) then
+              begin
+                Delete(S, 2, 1);
+                HistoryItem.FChangedFiles.Add(S);
+              end;
+              Inc(I);
+            end;
+            if (I < OutputStrings.Count) and (Pos('H:', OutputStrings[I]) = 1) then
+              Dec(I);
           end;
         end;
         Inc(I);
@@ -656,10 +837,79 @@ end;
 
 { TGitClient }
 
+function TGitClient.Commit(AFileList: TStringList; const AMessage: string; const AUser: string = ''): TGitError;
+var
+  I, P, Res: Integer;
+  CmdLine, Output, S: string;
+  EncodedMessage: RawByteString;
+  CurrentDir: string;
+begin
+  Result := geUnknown;
+  if AMessage = '' then
+    Result := geEmptyCommitMessage
+  else
+  if AFileList.Count > 0 then
+  begin
+    FLastCommitInfoBranch := '';
+    FLastCommitInfoHash := '';
+    CurrentDir := GetCurrentDir;
+    try
+      SetCurrentDir(ExtractFilePath(AFileList[0]));
+
+      //this seems to be the only way to pass the UTF-8 correctly
+      EncodedMessage := UTF8Encode(AMessage);
+      SetCodePage(EncodedMessage, 0, False);
+
+      CmdLine := GitExecutable + ' commit -m ' + AnsiQuotedStr(EncodedMessage, '"');
+      if AUser <> '' then
+        CmdLine := CmdLine + ' --author ' + AnsiQuotedStr(AUser, '"');
+      CmdLine := CmdLine + ' -o';
+      for I := 0 to AFileList.Count - 1 do
+        CmdLine := CmdLine + ' ' + StringReplace(QuoteFileName(AFileList[I]), '\', '/', [rfReplaceAll]);
+      Res := Execute(CmdLine, Output);
+      if Res = 0 then
+      begin
+        if Pos('Aborting commit due to empty commit message', Output) > 0 then
+          Result := geEmptyCommitMessage
+        else
+        if Pos('[', Output) = 1 then
+        begin
+          Result := geSuccess;
+          P := Pos(']', Output);
+          FLastCommitInfoHash := Copy(Output, P - 7, 7);
+          FLastCommitInfoBranch := Copy(Output, 1, P - 9);
+          P := Pos('[', FLastCommitInfoBranch);
+          if P > 0 then
+            Delete(FLastCommitInfoBranch, 1, P);
+        end;
+      end;
+    finally
+      SetCurrentDir(CurrentDir);
+    end;
+  end;
+end;
+
 constructor TGitClient.Create;
 begin
   inherited Create;
   //FGitExecutable := 'c:\Program Files (x86)\Git\bin\git.exe';
+end;
+
+function TGitClient.Add(const AFileName: string): Boolean;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(AFileName));
+    CmdLine := FGitExecutable + ' add ' + QuoteFileName(ExtractFileName(AFileName));
+    Res := Execute(CmdLine, Output);
+    Result := Res = 0;
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
 end;
 
 function TGitClient.Clone(const ASourcePath, ADestPath: string; ACallBack: TGitCloneCallBack): Boolean;
@@ -691,6 +941,87 @@ procedure TGitClient.ExecuteTextHandler(const Text: string);
 begin
   if Assigned(FCloneCallBack) then
     FCloneCallBack(Self, Text, FCancel);
+end;
+
+function TGitClient.FindRepositoryRoot(const APath: string): string;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(APath);
+    CmdLine := GitExecutable + ' rev-parse --show-toplevel';
+    Res := Execute(CmdLine, Output);
+    if Res = 0 then
+      Result := Trim(Output)
+    else
+      Result := '';
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+end;
+
+function TGitClient.GetModifications(const APath: string; ACallBack: TGitStatusCallback): Boolean;
+var
+  I, Res: Integer;
+  CmdLine, Output, S, StatusStr: string;
+  OutputStrings: TStringList;
+  CurrentDir: string;
+  GitItem: TGitItem;
+  Cancel: Boolean;
+begin
+  Result := Assigned(ACallBack);
+  if Result then
+  begin
+    CurrentDir := GetCurrentDir;
+    try
+      SetCurrentDir(APath);
+      CmdLine := GitExecutable + ' status -s -uall .';
+      Res := Execute(CmdLine, Output);
+      Result := Res = 0;
+      if Result then
+      begin
+        OutputStrings := TStringList.Create;
+        try
+          OutputStrings.Text := Output;
+          Cancel := False;
+          for I := 0 to OutputStrings.Count - 1 do
+          begin
+            S := OutputStrings[I];
+            if (Length(S) > 3) and (S[3] = ' ') then
+            begin
+              S := StringReplace(S, '/', '\', [rfReplaceAll]);
+              StatusStr := Trim(Copy(S, 1, 2));
+              Assert((StatusStr[1] = 'M') or (StatusStr[1] = 'A') or (StatusStr[1] = 'D') or (StatusStr[1] = '?'));
+              GitItem := TGitItem.Create(Self, IncludeTrailingPathDelimiter(APath) + Copy(S, 4, Length(S)));
+              if StatusStr[1] = 'M' then
+                GitItem.FStatus := gsModified
+              else
+              if StatusStr[1] = 'A' then
+                GitItem.FStatus := gsAdded
+              else
+              if StatusStr[1] = 'D' then
+                GitItem.FStatus := gsDeleted
+              else
+              if StatusStr[1] = '?' then
+                GitItem.FStatus := gsUnversioned
+              else
+                GitItem.FStatus := gsUnknown;
+              ACallBack(Self, GitItem, Cancel);
+              if Cancel then
+                Break;
+            end;
+          end;
+        finally
+          OutputStrings.Free;
+        end;
+      end;
+    finally
+      SetCurrentDir(CurrentDir);
+    end;
+  end;
 end;
 
 function TGitClient.IsPathInWorkingCopy(const APath: string): Boolean;
@@ -747,6 +1078,49 @@ begin
   end
   else
     Result := False;
+end;
+
+function TGitClient.Revert(const AFileName: string): Boolean;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(AFileName));
+    CmdLine := FGitExecutable + ' checkout HEAD ' + QuoteFileName(ExtractFileName(AFileName));
+    Res := Execute(CmdLine, Output);
+    Result := (Res = 0) and (Trim(Output) = '');
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+end;
+
+procedure TGitClient.SaveFileContentToStream(const AFileName, ARevision: string;
+  OutputStream: TStream);
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+  FullFileName: string;
+  FileContent: AnsiString;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(AFileName));
+    CmdLine := GitExecutable + ' ls-files ' + QuoteFileName(ExtractFileName(AFileName)) + ' --full-name';
+    Res := Execute(CmdLine, Output);
+    FullFileName := Trim(Output);
+    CmdLine := GitExecutable + ' show ' + ARevision + ':' + QuoteFileName(FullFileName);
+    Output := '';
+    Res := Execute(CmdLine, Output);
+    FileContent := Output;
+    if Length(FileContent) > 0 then
+      OutputStream.Write(FileContent[1], Length(FileContent));
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
 end;
 
 end.

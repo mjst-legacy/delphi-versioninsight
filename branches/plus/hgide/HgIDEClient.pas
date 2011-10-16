@@ -27,22 +27,36 @@ unit HgIDEClient;
 interface
 
 uses
-  SysUtils, Classes, HgClient;
+  SysUtils, Classes, HgClient, HgIDEColors;
 
 type
+  THgOptions = class(TObject)
+  private
+    FDeleteBackupFilesAfterCommit: Boolean;
+  public
+    constructor Create;
+    procedure Load;
+    procedure Save;
+    property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
+  end;
+
   THgIDEClient = class(TObject)
   private
     FHistoryProviderIndex: Integer;
+    FColors: THgColors;
     FHgClient: THgClient;
     FHgInitialized: Boolean;
+    FOptions: THgOptions;
     procedure Initialize;
     procedure Finalize;
     function GetHgClient: THgClient;
   public
     constructor Create;
     destructor Destroy; override;
+    property Colors: THgColors read FColors;
     function HgInitialize: Boolean;
     property HgClient: THgClient read GetHgClient;
+    property Options: THgOptions read FOptions;
   end;
 
 procedure Register;
@@ -64,6 +78,8 @@ const
   sSourceRepoHistory = 'SourceRepoHistory';
   sSourceRepoHistoryItem = 'SourceRepoHistory%d';
   MaxSourceRepoHistory = 20;
+  cOptions = 'Options';
+  cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
 
 procedure Register;
 begin
@@ -74,17 +90,64 @@ begin
   RegisterFileStateProvider;
 end;
 
+{ THgOptions }
+
+constructor THgOptions.Create;
+begin
+  inherited Create;
+  FDeleteBackupFilesAfterCommit := False;
+  Load;
+end;
+
+procedure THgOptions.Load;
+var
+  Reg: TRegistry;
+  BaseKey, Key: string;
+begin
+  Reg := TRegistry.Create;
+  try
+    BaseKey := BaseRegKey + cOptions;
+    if not Reg.KeyExists(BaseKey) then
+      Exit;
+    Reg.OpenKeyReadOnly(BaseKey);
+    Key := cDeleteBackupFilesAfterCommit;
+    if Reg.ValueExists(Key) then
+      FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
+  finally
+    Reg.Free;
+  end;
+end;
+
+procedure THgOptions.Save;
+var
+  Reg: TRegistry;
+  BaseKey: string;
+begin
+  Reg := TRegistry.Create;
+  try
+    BaseKey := BaseRegKey + cOptions;
+    Reg.OpenKey(BaseKey, True);
+    Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
+  finally
+    Reg.Free;
+  end;
+end;
+
 { THgIDEClient }
 
 constructor THgIDEClient.Create;
 begin
   inherited Create;
+  FColors := THgColors.Create;
+  FOptions := THgOptions.Create;
   Initialize;
 end;
 
 destructor THgIDEClient.Destroy;
 begin
   Finalize;
+  FOptions.Free;
+  FColors.Free;
   inherited Destroy;
 end;
 

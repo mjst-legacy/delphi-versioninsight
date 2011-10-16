@@ -28,7 +28,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, 
-  Dialogs, StdCtrls, Buttons;
+  Dialogs, StdCtrls, Buttons, ExtCtrls;
 
 type
   TfrmHgTestsOptions = class(TFrame)
@@ -37,6 +37,20 @@ type
     Label1: TLabel;
     OpenDialog1: TOpenDialog;
     SpeedButton1: TSpeedButton;
+    GroupBox2: TGroupBox;
+    Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    cboxConflicted: TColorBox;
+    cboxAdded: TColorBox;
+    cboxDeleted: TColorBox;
+    cboxMerged: TColorBox;
+    cboxModified: TColorBox;
+    cbStatusColorsEnabled: TCheckBox;
+    GroupBox3: TGroupBox;
+    cbDeleteBackupFilesAfterCommit: TCheckBox;
     procedure SpeedButton1Click(Sender: TObject);
   private
     { Private declarations }

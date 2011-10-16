@@ -290,33 +290,35 @@ end;
 
 function TLogView.FileColorCallBack(Action: Char): TColor;
 begin
-//  Result := IDEClient.Colors.GetLogActionColor(Action);
-  Result := clWindowText;
+  Result := IDEClient.Colors.GetLogActionColor(Action);
 end;
 
 procedure TLogView.FrameCreated(AFrame: TCustomFrame);
 var
-  URL, RootURL, RootRelativePath: string;
+  RepoRootPath, RootRelativePath: string;
 begin
   FSvnLogFrame := TGitLogFrame(AFrame);
 
   FGitItem := TGitItem.Create(FGitClient, FRootPath);
   LoadRevisionsCallBack('', '', 100);
 
-  //FSvnLogFrame.FileColorCallBack := FileColorCallBack;
+  FSvnLogFrame.FileColorCallBack := FileColorCallBack;
   FSvnLogFrame.LoadRevisionsCallBack := LoadRevisionsCallBack;
   //FSvnLogFrame.ReverseMergeCallBack := ReverseMergeCallBack;
   FSvnLogFrame.CompareRevisionCallBack := CompareRevisionCallBack;
   FSvnLogFrame.SaveRevisionCallBack := SaveRevisionCallBack;
-  {
   FSvnLogFrame.RootPath := ExcludeTrailingPathDelimiter(FRootPath);
-  URL := IDEClient.SvnClient.FindRepository(FRootPath);
-  RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
-  if URL <> RootURL then
-    RootRelativePath := Copy(URL, Length(RootURL) + 1, MaxInt)
+  RepoRootPath := IDEClient.GitClient.FindRepositoryRoot(FRootPath);
+  RepoRootPath := IncludeTrailingPathDelimiter(StringReplace(RepoRootPath, '/', '\', [rfReplaceAll]));
+  if RepoRootPath <> FRootPath then
+  begin
+    RootRelativePath := Copy(FRootPath, Length(RepoRootPath) + 1, MaxInt);
+    RootRelativePath := StringReplace(RootRelativePath, '\', '/', [rfReplaceAll]);
+  end
   else
     RootRelativePath := '';
   FSvnLogFrame.RootRelativePath := RootRelativePath;
+  {
   FSvnLogFrame.ShowBugIDColumn := FBugIDParser.BugTraqLogRegEx <> '';
   FSvnItem := TSvnItem.Create(FSvnClient, nil, FRootPath, True);
   FSvnItem.AsyncUpdate := Self;
@@ -447,7 +449,7 @@ begin
       for I := FFirst to LastNewIndex do
       begin
         HistoryItem := GitItem.HistoryItems[I];
-        FSvnLogFrame.AddRevisions(HistoryItem.Hash, HistoryItem.Date,
+        FSvnLogFrame.AddRevisions(HistoryItem.Hash, UTCToTzDateTime(HistoryItem.Date),
           HistoryItem.Author, HistoryItem.Subject, '', HistoryItem.ChangedFiles);
       end;
     finally

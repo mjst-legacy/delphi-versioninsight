@@ -132,6 +132,7 @@ type
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure EditLogMessageRevisionActionUpdate(Sender: TObject);
     procedure EditLogMessageRevisionActionExecute(Sender: TObject);
+    procedure FilesDblClick(Sender: TObject);
   protected
     FBaseRevision: string;
     FBugIDColumnNo: Integer;
@@ -825,6 +826,12 @@ begin
     end;
     Item.SubItems.Add(S);
   end;
+end;
+
+procedure TSvnLogFrame.FilesDblClick(Sender: TObject);
+begin
+  if FileCompareWithPreviousRevisionAction.Enabled then
+    FileCompareWithPreviousRevisionAction.Execute;
 end;
 
 function TSvnLogFrame.GetCommentColumn: Integer;

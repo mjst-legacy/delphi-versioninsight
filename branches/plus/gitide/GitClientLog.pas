@@ -125,6 +125,7 @@ type
     procedure CompareRevisionsActionExecute(Sender: TObject);
     procedure RevisionsDataStateChange(Sender: TObject; StartIndex,
       EndIndex: Integer; OldState, NewState: TItemStates);
+    procedure FilesDblClick(Sender: TObject);
   protected
     FBugIDColumnNo: Integer;
     FCount: Integer;
@@ -734,7 +735,10 @@ begin
       FilesSL := TStringList(Revisions.Selected.Data)
     else
       FilesSL := FRevisionFiles;
-    TextColor := FFileColorCallBack(FilesSL[Item.Index][1]);
+    if (FRootRelativePath = '') or (Pos(FRootRelativePath, System.Copy(FilesSL[Item.Index], 2, MaxInt)) > 0) then
+      TextColor := FFileColorCallBack(FilesSL[Item.Index][1])
+    else
+      TextColor := FFileColorCallBack('-');
     if TextColor <> clNone then
       Files.Canvas.Font.Color := TextColor;
   end;
@@ -760,6 +764,12 @@ begin
     end;
     Item.SubItems.Add(S);
   end;
+end;
+
+procedure TGitLogFrame.FilesDblClick(Sender: TObject);
+begin
+  if FileCompareWithPreviousRevisionAction.Enabled then
+    FileCompareWithPreviousRevisionAction.Execute;
 end;
 
 function TGitLogFrame.GetCommentColumn: Integer;

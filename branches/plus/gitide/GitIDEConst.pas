@@ -45,7 +45,7 @@ resourcestring
   STime = 'Time: ';
   SComment = 'Comment: ';
 
-  sCommitLoaded = 'An existing commit window was open. Please close it if you wish to start a new commit.';
+  sCommitLoaded = 'A commit window is still open. Please close it if you wish to start a new commit.';
   sRetrievingFileRevision = 'Retrieving %s revision %s';
   sSavingFileRevision = 'Saving %s revision %s';
 

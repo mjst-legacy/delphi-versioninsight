@@ -27,22 +27,36 @@ unit GitIDEClient;
 interface
 
 uses
-  SysUtils, Classes, GitClient;
+  SysUtils, Classes, GitClient, GitIDEColors;
 
 type
+  TGitOptions = class(TObject)
+  private
+    FDeleteBackupFilesAfterCommit: Boolean;
+  public
+    constructor Create;
+    procedure Load;
+    procedure Save;
+    property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
+  end;
+
   TGitIDEClient = class(TObject)
   private
     FHistoryProviderIndex: Integer;
+    FColors: TGitColors;
     FGitClient: TGitClient;
     FGitInitialized: Boolean;
+    FOptions: TGitOptions;
     procedure Initialize;
     procedure Finalize;
     function GetGitClient: TGitClient;
   public
     constructor Create;
     destructor Destroy; override;
+    property Colors: TGitColors read FColors;
     function GitInitialize: Boolean;
     property GitClient: TGitClient read GetGitClient;
+    property Options: TGitOptions read FOptions;
   end;
 
 procedure Register;
@@ -64,6 +78,8 @@ const
   sSourceRepoHistory = 'SourceRepoHistory';
   sSourceRepoHistoryItem = 'SourceRepoHistory%d';
   MaxSourceRepoHistory = 20;
+  cOptions = 'Options';
+  cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
 
 procedure Register;
 begin
@@ -74,17 +90,64 @@ begin
   RegisterFileStateProvider;
 end;
 
+{ TGitOptions }
+
+constructor TGitOptions.Create;
+begin
+  inherited Create;
+  FDeleteBackupFilesAfterCommit := False;
+  Load;
+end;
+
+procedure TGitOptions.Load;
+var
+  Reg: TRegistry;
+  BaseKey, Key: string;
+begin
+  Reg := TRegistry.Create;
+  try
+    BaseKey := BaseRegKey + cOptions;
+    if not Reg.KeyExists(BaseKey) then
+      Exit;
+    Reg.OpenKeyReadOnly(BaseKey);
+    Key := cDeleteBackupFilesAfterCommit;
+    if Reg.ValueExists(Key) then
+      FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
+  finally
+    Reg.Free;
+  end;
+end;
+
+procedure TGitOptions.Save;
+var
+  Reg: TRegistry;
+  BaseKey: string;
+begin
+  Reg := TRegistry.Create;
+  try
+    BaseKey := BaseRegKey + cOptions;
+    Reg.OpenKey(BaseKey, True);
+    Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
+  finally
+    Reg.Free;
+  end;
+end;
+
 { TGitIDEClient }
 
 constructor TGitIDEClient.Create;
 begin
   inherited Create;
+  FColors := TGitColors.Create;
+  FOptions := TGitOptions.Create;
   Initialize;
 end;
 
 destructor TGitIDEClient.Destroy;
 begin
   Finalize;
+  FOptions.Free;
+  FColors.Free;
   inherited Destroy;
 end;
 

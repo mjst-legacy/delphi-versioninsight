@@ -172,6 +172,7 @@ object HgLogFrame: THgLogFrame
       ViewStyle = vsReport
       OnCustomDrawItem = FilesCustomDrawItem
       OnData = FilesData
+      OnDblClick = FilesDblClick
     end
   end
   object CenterPanel: TPanel

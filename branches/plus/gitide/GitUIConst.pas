@@ -67,6 +67,7 @@ resourcestring
   sLoadRepoContentError = 'Cannot load repository content. Please check the entered URL.';
   sNoFiles = 'No file modifications found.  There is nothing to commit.';
   sBugIDCaption = 'Bug-ID';
+  sSelCountTotalCount = '%d files selected, %d files total';
 
 implementation
 

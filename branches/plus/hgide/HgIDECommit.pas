@@ -94,7 +94,7 @@ implementation
 uses SysUtils, ToolsApi, Forms, DesignIntf, ComCtrls, Controls, HgIDEConst,
   HgClientCommitFrame, {svn_client, }FileHistoryAPI, IStreams,
   ActiveX, Dialogs, {SvnIDEClean,} HgIDEMessageView, Registry, HgUITypes,
-  HgIDEUtils, Graphics, IOUtils, Types, HgIDEIcons;
+  HgIDEUtils, Graphics, IOUtils, Types, HgIDEIcons, HgIDEFileStates;
 
 const
   sPMVCommit = 'Commit';
@@ -734,6 +734,7 @@ begin
     MessageDlg('Username not configured', mtError, [mbOK], 0)
   else
     MessageDlg('unknown error', mtError, [mbOK], 0);
+  FlushFileListFileStates(CommitList);
 end;
 
 procedure LoadRecentComments(const RecentComments: TStringList);

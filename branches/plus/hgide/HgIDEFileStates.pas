@@ -26,6 +26,10 @@ unit HgIDEFileStates;
 
 interface
 
+uses
+  Classes;
+
+procedure FlushFileListFileStates(AFileList: TStringList);
 procedure RegisterFileStateProvider;
 procedure UnregisterFileStateProvider;
 
@@ -33,7 +37,7 @@ implementation
 
 {$IFDEF TOOLSPROAPI}
 uses
-  SyncObjs, SysUtils, Classes, Graphics, Generics.Collections, ToolsAPI, DesignIntf, ToolsProAPI, HgClient,
+  SyncObjs, SysUtils, Graphics, Generics.Collections, ToolsAPI, DesignIntf, ToolsProAPI, HgClient,
   HgIDEClient, TypInfo;
 
 type
@@ -98,6 +102,9 @@ type
   TIOTAProVersionControlFileStateProvider = class(TInterfacedObject,
     IOTAProVersionControlFileStateProvider)
   private
+    class var
+      FSingleton: TIOTAProVersionControlFileStateProvider;
+    var
     FThread: TSvnStateThread;
     FItems: TSvnStateDirList;
     FLock: TCriticalSection;
@@ -114,6 +121,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    class procedure FlushFiles(AFileList: TStringList);
   end;
 
 constructor TSvnStateThread.Create(CreateSuspended: Boolean);
@@ -361,10 +369,16 @@ begin
   FLock := TCriticalSection.Create;
   FRestartThread := False;
   FUpdateCount := 0;
+  if not Assigned(FSingleton) then
+    FSingleton := Self
+  else
+    raise Exception.CreateFmt('There must not be multiple instances of %s.', [ClassName]);
 end;
 
 destructor TIOTAProVersionControlFileStateProvider.Destroy;
 begin
+  if FSingleton = Self then
+    FSingleton := nil;
   FLock.Free;
   FItems.Free;
   if not FThread.Suspended then
@@ -414,6 +428,15 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+class procedure TIOTAProVersionControlFileStateProvider.FlushFiles(AFileList: TStringList);
+var
+  I: Integer;
+begin
+  if Assigned(FSingleton) then
+    for I := 0 to AFileList.Count - 1 do
+      FSingleton.FlushFile(AFileList[I]);
 end;
 
 function TIOTAProVersionControlFileStateProvider.GetFileState(const FileName: string;
@@ -720,6 +743,13 @@ end;
 var
   NotifierIndex: Integer = -1;
 
+procedure FlushFileListFileStates(AFileList: TStringList);
+begin
+  TIOTAProVersionControlFileStateProvider.FlushFiles(AFileList);
+  if Supports(BorlandIDEServices, IOTAProVersionControlServices) then
+    (BorlandIDEServices as IOTAProVersionControlServices).InvalidateControls;
+end;
+
 procedure RegisterFileStateProvider;
 begin
   if Supports(BorlandIDEServices, IOTAProVersionControlServices) then
@@ -737,6 +767,11 @@ begin
 end;
 
 {$ELSE ~TOOLSPROAPI}
+procedure FlushFileListFileStates(AFileList: TStringList);
+begin
+//
+end;
+
 procedure RegisterFileStateProvider;
 begin
 //

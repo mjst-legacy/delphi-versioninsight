@@ -147,6 +147,18 @@ type
     destructor Destroy; override;
   end;
 
+  TSvnURLToFileNameTranslator = class(TObject)
+  private
+    FRootURL: string;
+    FSvnClient: TSvnClient;
+    FURL: string;
+    FURLPath: string;
+    function GetBaseURL(const AURL1, AURL2: string): string;
+  public
+    constructor Create(ASvnClient: TSvnClient; const AURLPath: string);
+    function GetTranslatedFileName(const ATrailingURLPath: string): string;
+  end;
+
 { TBaseLogSvnMenu }
 
 constructor TBaseLogSvnMenu.Create(ASvnIDEClient: TSvnIDEClient);
@@ -240,6 +252,54 @@ begin
   Result := LogImageIndex;
 end;
 
+{ TSvnURLToFileNameTranslator }
+
+constructor TSvnURLToFileNameTranslator.Create(ASvnClient: TSvnClient; const AURLPath: string);
+begin
+  inherited Create;
+  FSvnClient := ASvnClient;
+  FURL := FSvnClient.FindRepository(AURLPath);
+  FRootURL := FSvnClient.FindRepositoryRoot(AURLPath);
+  FURLPath := SvnExcludeTrailingPathDelimiter(FSvnClient.NativePathToSvnPath(AURLPath));
+end;
+
+function TSvnURLToFileNameTranslator.GetBaseURL(const AURL1, AURL2: string): string;
+var
+  I, L, L1, L2: Integer;
+begin
+  L := 0;
+  L1 := Length(AURL1);
+  L2 := Length(AURL2);
+  for I := 1 to L1 do
+    if (L2 >= I) and (AURL1[I] = AURL2[I]) then
+    begin
+      if (AURL1[I] = '/') or (I = L1) or (I = L2) then
+        L := I;
+    end
+    else
+      Break;
+  if L > 0 then
+    Result := Copy(AURL1, 1, L)
+  else
+    Result := '';
+end;
+
+function TSvnURLToFileNameTranslator.GetTranslatedFileName(const ATrailingURLPath: string): string;
+var
+  BaseURL, BaseURLPath, PathName: string;
+begin
+  if FURL <> FRootURL then
+  begin
+    PathName := ATrailingURLPath;
+    BaseURL := GetBaseURL(FURL, FRootURL + PathName);
+    BaseURLPath := Copy(FURLPath, 1, Length(FURLPath) + Length(BaseURL) - Length(FURL));
+    System.Delete(PathName, 1, Length(BaseURL) - Length(FRootURL));
+    Result := BaseURLPath + PathName;
+  end
+  else
+    Result := FURLPath + ATrailingURLPath;
+end;
+
 { TLogView }
 
 function TLogView.CloneEditorView: INTACustomEditorView;
@@ -262,18 +322,19 @@ procedure TLogView.CompareRevisionCallBack(AFileList: TStringList; ARevision1,
 var
   I: Integer;
   CompareRevisionThread: TCompareRevisionThread;
-  URL, RootURL, Path, PathName: string;
+  FileName: string;
+  SvnURLToFileNameTranslator: TSvnURLToFileNameTranslator;
 begin
   CompareRevisionThread := TCompareRevisionThread.Create;
-  URL := IDEClient.SvnClient.FindRepository(FRootPath);
-  RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
-  Path := SvnExcludeTrailingPathDelimiter(IDEClient.SvnClient.NativePathToSvnPath(FRootPath));
-  for I := 0 to AFileList.Count - 1 do
-  begin
-    PathName := AFileList[I];
-    if URL <> RootURL then
-      Delete(PathName, 1, Length(URL) - Length(RootURL));
-    CompareRevisionThread.AddFile(Path + PathName, ARevision1, ARevision2);
+  SvnURLToFileNameTranslator := TSvnURLToFileNameTranslator.Create(IDEClient.SvnClient, FRootPath);
+  try
+    for I := 0 to AFileList.Count - 1 do
+    begin
+      FileName := SvnURLToFileNameTranslator.GetTranslatedFileName(AFileList[I]);
+      CompareRevisionThread.AddFile(FileName, ARevision1, ARevision2);
+    end;
+  finally
+    SvnURLToFileNameTranslator.Free;
   end;
   CompareRevisionThread.Start;
 end;
@@ -462,18 +523,19 @@ procedure TLogView.SaveRevisionCallBack(AFileList: TStringList;
 var
   I: Integer;
   SaveRevisionThread: TSaveRevisionThread;
-  URL, RootURL, Path, PathName: string;
+  FileName: string;
+  SvnURLToFileNameTranslator: TSvnURLToFileNameTranslator;
 begin
   SaveRevisionThread := TSaveRevisionThread.Create(ARevision, ADestPath);
-  URL := IDEClient.SvnClient.FindRepository(FRootPath);
-  RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
-  Path := SvnExcludeTrailingPathDelimiter(IDEClient.SvnClient.NativePathToSvnPath(FRootPath));
-  for I := 0 to AFileList.Count - 1 do
-  begin
-    PathName := AFileList[I];
-    if URL <> RootURL then
-      Delete(PathName, 1, Length(URL) - Length(RootURL));
-    SaveRevisionThread.AddFile(Path + PathName);
+  SvnURLToFileNameTranslator := TSvnURLToFileNameTranslator.Create(IDEClient.SvnClient, FRootPath);
+  try
+    for I := 0 to AFileList.Count - 1 do
+    begin
+      FileName := SvnURLToFileNameTranslator.GetTranslatedFileName(AFileList[I]);
+      SaveRevisionThread.AddFile(FileName);
+    end;
+  finally
+    SvnURLToFileNameTranslator.Free;
   end;
   SaveRevisionThread.Start;
 end;

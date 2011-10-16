@@ -49,7 +49,7 @@ procedure RegisterAddInOptions;
 implementation
 
 uses
-  Registry, GitIDEClient;
+  Registry, GitIDEClient, GitIDEColors;
 
 { TGitAddInOptions }
 
@@ -57,17 +57,31 @@ procedure TGitAddInOptions.DialogClosed(Accepted: Boolean);
 var
   RegIniFile: TRegIniFile;
   Key: string;
+  Colors: TSvnColorArray;
 begin
-  if Accepted and (IDEClient.GitClient.GitExecutable <> FFrame.edGitExecutable.Text) then
+  if Accepted then
   begin
-    IDEClient.GitClient.GitExecutable := FFrame.edGitExecutable.Text;
-    Key := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey + '\VersionInsight';
-    RegIniFile := TRegIniFile.Create(Key);
-    try
-      RegIniFile.WriteString('Git', 'Executable', IDEClient.GitClient.GitExecutable);
-    finally
-      RegIniFile.Free;
+    if IDEClient.GitClient.GitExecutable <> FFrame.edGitExecutable.Text  then
+    begin
+      IDEClient.GitClient.GitExecutable := FFrame.edGitExecutable.Text;
+      Key := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey + '\VersionInsight';
+      RegIniFile := TRegIniFile.Create(Key);
+      try
+        RegIniFile.WriteString('Git', 'Executable', IDEClient.GitClient.GitExecutable);
+      finally
+        RegIniFile.Free;
+      end;
     end;
+    Colors := IDEClient.Colors.Colors;
+    Colors[ssckConflicted] := FFrame.cboxConflicted.Selected;
+    Colors[ssckAdded] := FFrame.cboxAdded.Selected;
+    Colors[ssckDeleted] := FFrame.cboxDeleted.Selected;
+    Colors[ssckMerged] := FFrame.cboxMerged.Selected;
+    Colors[ssckModified] := FFrame.cboxModified.Selected;
+    IDEClient.Colors.Colors := Colors;
+    IDEClient.Colors.Save;
+    IDEClient.Options.DeleteBackupFilesAfterCommit := FFrame.cbDeleteBackupFilesAfterCommit.Checked;
+    IDEClient.Options.Save;
   end;
 end;
 
@@ -75,6 +89,13 @@ procedure TGitAddInOptions.FrameCreated(AFrame: TCustomFrame);
 begin
   FFrame := TfrmGitTestsOptions(AFrame);
   FFrame.edGitExecutable.Text := IDEClient.GitClient.GitExecutable;
+  FFrame.cbStatusColorsEnabled.Checked := IDEClient.Colors.Enabled;
+  FFrame.cboxConflicted.Selected := IDEClient.Colors.Colors[ssckConflicted];
+  FFrame.cboxAdded.Selected := IDEClient.Colors.Colors[ssckAdded];
+  FFrame.cboxDeleted.Selected := IDEClient.Colors.Colors[ssckDeleted];
+  FFrame.cboxMerged.Selected := IDEClient.Colors.Colors[ssckMerged];
+  FFrame.cboxModified.Selected := IDEClient.Colors.Colors[ssckModified];
+  FFrame.cbDeleteBackupFilesAfterCommit.Checked := IDEClient.Options.DeleteBackupFilesAfterCommit;
 end;
 
 function TGitAddInOptions.GetArea: string;

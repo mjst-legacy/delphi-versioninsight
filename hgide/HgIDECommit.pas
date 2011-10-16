@@ -321,7 +321,7 @@ end;
 procedure TCommit.CommitCallBack(const CommitList: TStringList;
   const Comment: string; const RecentComments: TStringList);
 begin
-  DoCommit(FSvnClient, CommitList, Comment, RecentComments, False{IDEClient.Options.DeleteBackupFilesAfterCommit});
+  DoCommit(FSvnClient, CommitList, Comment, RecentComments, IDEClient.Options.DeleteBackupFilesAfterCommit);
 end;
 
 constructor TCommit.Create(SvnClient: THgClient; const DirectoryList: TStringList;
@@ -396,8 +396,7 @@ end;
 
 function TCommit.FileColorCallBack(AItem: TSvnListViewItem): TColor;
 begin
-  //Result := IDEClient.Colors.GetStatusColor(AItem.TextStatus);
-  Result := clWindowText;
+  Result := IDEClient.Colors.GetStatusColor(AItem.TextStatus);
 end;
 
 procedure TCommit.PrepareFileList(FrameAdd: TRefreshProc; AModificationCallBack: THgStatusCallback; var AURL: string);

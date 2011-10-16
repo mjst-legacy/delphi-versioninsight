@@ -473,6 +473,7 @@ procedure THgNotifier.FileBrowserMenu(const IdentList: TStrings;
   const FileBrowserMenuList: IInterfaceList; IsMultiSelect: Boolean);
 begin
   if (IdentList.Count = 1) and DirectoryExists(IdentList[0]) and
+    IDEClient.HgClient.IsPathInWorkingCopy(IdentList[0]) and
     IDEClient.HgClient.IsVersioned(IdentList[0]) then
   begin
     FileBrowserMenuList.Add(FBMMSvnParent);

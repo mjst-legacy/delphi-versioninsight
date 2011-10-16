@@ -3,30 +3,14 @@
 ; HEADER
 ; -----------------------------------------------------------------------------
 
-#define BDSSuffix150 
-;#define BDSSuffix160
+#define BUILDNO  'Beta6'
 
-#IFDEF BDSSuffix150
-#define VERSION  'XE'
-#define BUILDNO  'Beta5_5'
-#ENDIF
-
-#IFDEF BDSSuffix160
-#define VERSION  'XE2'
-#define BUILDNO  'Beta5_5'
-#ENDIF
-
-OutputBaseFilename=.\VerInsPlus{#VERSION}{#BUILDNO}
+OutputBaseFilename=.\VerInsPlus{#BUILDNO}
 AppName=Version Insight Plus
-AppVerName=Version Insight Plus {#VERSION}
+AppVerName=Version Insight Plus
 DefaultDirName={pf}\VersionInsight
 DefaultGroupName=Version Insight
-#IFDEF BDSSuffix150
-LicenseFile=License150.rtf
-#ENDIF
-#IFDEF BDSSuffix160
-LicenseFile=License160.rtf
-#ENDIF
+LicenseFile=License.rtf
 Compression=lzma
 SolidCompression=true
 AllowRootDirectory=false
@@ -51,34 +35,22 @@ ShowLanguageDialog=yes
   Name: VERINS\DSNIDEPRO;     Description: DesignIDEPro IDE Package;    Types: FULL CUSTOM
 
 [Tasks]
-#IFDEF BDSSuffix150 
-  Name: "IDE_REGISTER";           Description: "Register Version Insight"; components: VERINS;             Flags: checkedonce Exclusive; check: GetBDS8_UPDetected('8.0')
-  Name: "IDE_REGISTER\DSNIDEPRO"; Description: "Register DesignIDEPro";    components: VERINS\DSNIDEPRO;                                 check: GetBDS8_UPDetected('8.0')
-  Name: "IDE_REGISTER\GIT";       Description: "Enable Git";               components: VERINS\DSNIDEPRO;                                 check: GetBDS8_UPDetected('8.0')
-  Name: "IDE_REGISTER\HG";        Description: "Enable Mercurial";         components: VERINS\DSNIDEPRO;                                 check: GetBDS8_UPDetected('8.0')
-  Name: "IDE_REGISTER\SVN";       Description: "Enable Subversion";        components: VERINS\DSNIDEPRO;                                 check: GetBDS8_UPDetected('8.0')
-  Name: "IDE_REGISTER\VERINSOFF"; Description: "Deinstall Embarcadero Subversion Integration"; components: VERINS;                       check: VersionInsightOfficeExists('8.0')
-#ENDIF
-#IFDEF BDSSuffix160 
-  Name: "IDE_REGISTER";           Description: "Register Version Insight"; components: VERINS;             Flags: checkedonce Exclusive; check: GetBDS8_UPDetected('9.0')
-  Name: "IDE_REGISTER\DSNIDEPRO"; Description: "Register DesignIDEPro";    components: VERINS\DSNIDEPRO;                                 check: GetBDS8_UPDetected('9.0')
-  Name: "IDE_REGISTER\GIT";       Description: "Enable Git";               components: VERINS\DSNIDEPRO;                                 check: GetBDS8_UPDetected('9.0')
-  Name: "IDE_REGISTER\HG";        Description: "Enable Mercurial";         components: VERINS\DSNIDEPRO;                                 check: GetBDS8_UPDetected('9.0')
-  Name: "IDE_REGISTER\SVN";       Description: "Enable Subversion";        components: VERINS\DSNIDEPRO;                                 check: GetBDS8_UPDetected('9.0')
-  Name: "IDE_REGISTER\VERINSOFF"; Description: "Deinstall Embarcadero Subversion Integration"; components: VERINS;                       check: VersionInsightOfficeExists('9.0')
-#ENDIF
+  Name: "IDE_REGISTER";            Description: "Register Version Insight"; components: VERINS;             Flags: checkedonce Exclusive; check: GetBDS8_UPDetected('8.0') or GetBDS8_UPDetected('9.0')
+  Name: "IDE_REGISTER\IDE";        Description: "IDE Integration";          components: VERINS;                                           check: GetBDS8_UPDetected('8.0') or GetBDS8_UPDetected('9.0')
+  Name: "IDE_REGISTER\IDE\XE";     Description: "RAD Studio XE";            components: VERINS;                                           check: GetBDS8_UPDetected('8.0')
+  Name: "IDE_REGISTER\IDE\XE2";    Description: "RAD Studio XE2";           components: VERINS;                                           check: GetBDS8_UPDetected('9.0')
+  Name: "IDE_REGISTER\DSNIDEPRO";  Description: "Register DesignIDEPro";    components: VERINS\DSNIDEPRO;                                 check: GetBDS8_UPDetected('8.0') or GetBDS8_UPDetected('9.0')
+  Name: "IDE_REGISTER\GIT";        Description: "Enable Git";               components: VERINS;                                           check: GetBDS8_UPDetected('8.0') or GetBDS8_UPDetected('9.0')
+  Name: "IDE_REGISTER\HG";         Description: "Enable Mercurial";         components: VERINS;                                           check: GetBDS8_UPDetected('8.0') or GetBDS8_UPDetected('9.0')
+  Name: "IDE_REGISTER\SVN";        Description: "Enable Subversion";        components: VERINS;                                           check: GetBDS8_UPDetected('8.0') or GetBDS8_UPDetected('9.0')
+  Name: "IDE_REGISTER\VERINSOFF";  Description: "Deinstall Embarcadero Subversion Integration"; components: VERINS;                       check: VersionInsightOfficeExists('8.0') or VersionInsightOfficeExists('9.0')
 
 [Files]
-#IFDEF BDSSuffix150
-  Source: tortoisesvn_icon_license150.txt;                    DestDir: {app};            Components: VERINS;               Flags: ignoreversion overwritereadonly 
+  Source: tortoisesvn_icon_license.txt;                       DestDir: {app};            Components: VERINS;               Flags: ignoreversion overwritereadonly 
   Source: ..\bin\DelphiSVN150.dll;                            DestDir: {app};            Components: VERINS;               Flags: ignoreversion overwritereadonly
-  Source: ..\designidepro\bin\DesignIDEPro150.bpl;            DestDir: {app};            Components: VERINS\DSNIDEPRO;     Flags: ignoreversion overwritereadonly
-#ENDIF
-#IFDEF BDSSuffix160
-  Source: tortoisesvn_icon_license160.txt;                    DestDir: {app};            Components: VERINS;               Flags: ignoreversion overwritereadonly 
   Source: ..\bin\DelphiSVN160.dll;                            DestDir: {app};            Components: VERINS;               Flags: ignoreversion overwritereadonly
+  Source: ..\designidepro\bin\DesignIDEPro150.bpl;            DestDir: {app};            Components: VERINS\DSNIDEPRO;     Flags: ignoreversion overwritereadonly
   Source: ..\designidepro\bin\DesignIDEPro160.bpl;            DestDir: {app};            Components: VERINS\DSNIDEPRO;     Flags: ignoreversion overwritereadonly
-#ENDIF
 
 [Run]
 
@@ -160,12 +132,8 @@ begin
   Result := '';
   if RegGetValueNames(HKCU,  'Software\Embarcadero\BDS\' + sVersion + '\Known Packages', Names) then
     for I := 0 to GetArrayLength(Names)-1 do
-      #IFDEF BDSSuffix150
-      if Pos('SVNIDE150.BPL', AnsiUpperCase(Names[I])) > 0 then
-      #ENDIF
-      #IFDEF BDSSuffix160
-      if Pos('SVNIDE160.BPL', AnsiUpperCase(Names[I])) > 0 then
-      #ENDIF
+      if (Pos('SVNIDE150.BPL', AnsiUpperCase(Names[I])) > 0) or
+        (Pos('SVNIDE160.BPL', AnsiUpperCase(Names[I])) > 0) then
       begin
         Result := Names[I];
         Break; 
@@ -200,12 +168,13 @@ begin
       // =========================================
       // Register Delphi (5,6,7) Plugin IDE wizard
       // =========================================
-      #IFDEF BDSSuffix150
-      if Pos('IDE_REGISTER', sSelTasks) > 0 then
+      if Pos('IDE_REGISTER\IDE\XE', sSelTasks) > 0 then
       begin
         sIDEDll := AddBackSlash(ExpandConstant('{app}')) + 'DelphiSVN150.dll';
         RegWriteStringValue (HKCU, 'Software\Embarcadero\BDS\8.0\Experts', 'VersionInsight', sIDEDll);
       end;
+      if Pos('IDE_REGISTER\IDE\XE', sSelTasks) > 0 then
+      begin      
       if Pos('IDE_REGISTER\DSNIDEPRO', sSelTasks) > 0 then
       begin
         sIDEDll := AddBackSlash(ExpandConstant('{app}')) + 'DesignIDEPro150.bpl';
@@ -231,13 +200,15 @@ begin
         RegWriteStringValue (HKCU, 'Software\Embarcadero\BDS\8.0\VersionInsight\Subversion', 'Enabled', '0');
       if Pos('IDE_REGISTER\VERINSOFF', sSelTasks) > 0 then
         RegDeleteValue (HKCU, 'Software\Embarcadero\BDS\8.0\Known Packages', GetVersionInsightOfficePackageName('8.0'));
-      #ENDIF
-      #IFDEF BDSSuffix160
-      if Pos('IDE_REGISTER', sSelTasks) > 0 then
+      end;
+      
+      if Pos('IDE_REGISTER\IDE\XE2', sSelTasks) > 0 then
       begin
         sIDEDll := AddBackSlash(ExpandConstant('{app}')) + 'DelphiSVN160.dll';
         RegWriteStringValue (HKCU, 'Software\Embarcadero\BDS\9.0\Experts', 'VersionInsight', sIDEDll);
       end;
+      if Pos('IDE_REGISTER\IDE\XE2', sSelTasks) > 0 then
+      begin
       if Pos('IDE_REGISTER\DSNIDEPRO', sSelTasks) > 0 then
       begin
         sIDEDll := AddBackSlash(ExpandConstant('{app}')) + 'DesignIDEPro160.bpl';
@@ -262,8 +233,8 @@ begin
       else
         RegWriteStringValue (HKCU, 'Software\Embarcadero\BDS\9.0\VersionInsight\Subversion', 'Enabled', '0');
       if Pos('IDE_REGISTER\VERINSOFF', sSelTasks) > 0 then
-        RegDeleteValue (HKCU, 'Software\Embarcadero\BDS\9.0\Known Packages', GetVersionInsightOfficePackageName('9.0'));        
-      #ENDIF
+        RegDeleteValue (HKCU, 'Software\Embarcadero\BDS\9.0\Known Packages', GetVersionInsightOfficePackageName('9.0'));
+      end;        
     end;  // curPage = csTerminate
   end;  // case
 end;
@@ -278,16 +249,12 @@ begin
       end;
     usUninstall:
       begin
-        #IFDEF BDSSuffix150
         RegDeleteValue(HKEY_CURRENT_USER, 'Software\Embarcadero\BDS\8.0\Experts', 'VersionInsight');
         sIDEDll := AddBackSlash(ExpandConstant('{app}')) + 'DesignIDEPro150.bpl';
         RegDeleteValue(HKEY_CURRENT_USER, 'Software\Embarcadero\BDS\8.0\Known IDE Packages', sIDEDll);
-        #ENDIF
-        #IFDEF BDSSuffix160
         RegDeleteValue(HKEY_CURRENT_USER, 'Software\Embarcadero\BDS\9.0\Experts', 'VersionInsight');
         sIDEDll := AddBackSlash(ExpandConstant('{app}')) + 'DesignIDEPro160.bpl';
         RegDeleteValue(HKEY_CURRENT_USER, 'Software\Embarcadero\BDS\9.0\Known IDE Packages', sIDEDll);
-        #ENDIF        
       end;
     usPostUninstall:
       begin

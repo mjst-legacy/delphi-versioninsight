@@ -1,6 +1,6 @@
 The TortoiseSVN Icon License below applies to all included resources
-in DelphiSVN160.dll and DesignIDEPro160.bpl where the name starts
-with TSVN
+in DelphiSVN150.dll, DesignIDEPro150.bpl, DelphiSVN160.dll and
+DesignIDEPro160.bpl where the name starts with TSVN
 
 ====================================================================
 Copyright (c) 2006-2009 The TortoiseSVN Project.  All rights reserved.

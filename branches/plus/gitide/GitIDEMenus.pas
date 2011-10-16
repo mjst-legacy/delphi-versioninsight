@@ -470,6 +470,7 @@ procedure TGitNotifier.FileBrowserMenu(const IdentList: TStrings;
   const FileBrowserMenuList: IInterfaceList; IsMultiSelect: Boolean);
 begin
   if (IdentList.Count = 1) and DirectoryExists(IdentList[0]) and
+    IDEClient.GitClient.IsPathInWorkingCopy(IdentList[0]) and
     IDEClient.GitClient.IsVersioned(IdentList[0]) then
   begin
     FileBrowserMenuList.Add(FBMMSvnParent);

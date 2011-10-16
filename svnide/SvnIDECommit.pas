@@ -96,7 +96,7 @@ implementation
 uses SysUtils, ToolsApi, Forms, DesignIntf, ComCtrls, Controls, SvnIDEConst,
   SvnClientCommitFrame, svn_client, FileHistoryAPI, IStreams,
   ActiveX, Dialogs, SvnIDEClean, SvnIDEMessageView, Registry, SvnUITypes,
-  SvnIDEUtils, Graphics, IOUtils, Types, SvnIDEIcons;
+  SvnIDEUtils, Graphics, IOUtils, Types, SvnIDEIcons, SvnIDEFileStates;
 
 const
   sPMVCommit = 'Commit';
@@ -808,6 +808,7 @@ begin
     else
       raise;
   end;
+  FlushFileListFileStates(CommitList);
 end;
 
 procedure LoadRecentComments(const RecentComments: TStringList);

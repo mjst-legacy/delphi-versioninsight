@@ -94,7 +94,7 @@ implementation
 uses SysUtils, ToolsApi, Forms, DesignIntf, ComCtrls, Controls, GitIDEConst,
   GitClientCommitFrame, {svn_client, }FileHistoryAPI, IStreams,
   ActiveX, Dialogs, {SvnIDEClean,} GitIDEMessageView, Registry, GitUITypes,
-  GitIDEUtils, Graphics, IOUtils, Types, GitIDEIcons;
+  GitIDEUtils, Graphics, IOUtils, Types, GitIDEIcons, GitIDEFileStates;
 
 const
   sPMVCommit = 'Commit';
@@ -733,6 +733,7 @@ begin
     MessageDlg('Empty commit message', mtError, [mbOK], 0)//str
   else
     MessageDlg('unknown error', mtError, [mbOK], 0);
+  FlushFileListFileStates(CommitList);
 end;
 
 procedure LoadRecentComments(const RecentComments: TStringList);

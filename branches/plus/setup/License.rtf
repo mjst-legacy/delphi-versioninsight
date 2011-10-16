@@ -35,7 +35,7 @@ built on top of potential OTA features in future RAD Studio releases.\par
 \par
 Features\par
 --------\par
-This special version is based on Version Insight revision 136 and\par
+This special version is based on Version Insight revision 138 and\par
 consists of the Subversion integration, the Mercurial integration, the\par
 Git integration and Live Blame.\par
 \par
@@ -93,7 +93,32 @@ o I have seen my work IDE crashing with the App crash dialog when\par
 Changes\par
 -------\par
 2011/10/17\par
-o ...\par
+o [Git] Added: "File | Open From Version Control" support for Git\par
+  (aka Clone)\par
+o [Git] Added: Commit for Git\par
+o [Git] Added: Log View for Git\par
+o [Git] Added: File Browser menu for versioned directories\par
+o Tweak: Commit View: Files with status "Deleted" must not be \par
+  comparable (leads to a "Cannot open file" error)\par
+o Improvement: Commit View: Sorting takes now secondary fields\par
+  into account (sorting by Status for example does now sort by path \par
+  and name as well when the status is the same; before the items\par
+  with the same status where in random order)\par
+o Enhancement: Commit View: Added selected count and total file\par
+  count label\par
+o [Git, Hg] Added: Commit View/Log View: status and action colors\par
+o [Git, Hg] Commit: Enhancement: Added the option "Delete backup\par
+  files after commit" and when this option is enabled (it is disabled\par
+  by default) then the local history of the committed files will be\par
+  deleted\par
+o [Svn] Fixed: Log View: "Compare with previous revision" and\par
+  "Save revision to..." didn't work with files outside of the log path\par
+  (the gray files)\par
+o [Git, Hg] Log View: Unrelated path changes are now shown in\par
+  clGrayText unless the colors are disabled\par
+o Enhancement: Log View: "Compare with previous revision" in\par
+  files listview can now be called with Double Click too as in TSVN\par
+o Tweak: Commit: Perform state flush for committed files\par
 \par
 2011/09/02\par
 o Added: XE2 support\par

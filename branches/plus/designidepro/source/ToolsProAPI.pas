@@ -78,7 +78,7 @@ type
       The value is the index in the imagelist of the version control service.  You should
       first add items to this list using INTAProVersionControlServices.AddImages }
     OverlayImageIndex: Integer;
-    { Index of the image to be used for the editors status bar. The value is the index in
+    { Index of the image to be used for the editors status bar.  The value is the index in
       the imagelist of the version control service.  You should first add items to this 
       list using INTAProVersionControlServices.AddImages }
     StatusBarImageIndex: Integer;
@@ -96,29 +96,47 @@ type
 
   IOTAProVersionControlFileStateProvider = interface(IInterface)
   ['{44D6006E-D97A-4C05-BE4B-785CB99AB888}']
-    { This procedure is called after a compile. The file state provider can now
+    { This procedure is called after a compile.  The file state provider can now
       perform again any actions. }
     procedure AfterCompile;
-    { This procedure is called before a compile. The file state provider now
+    { This procedure is called before a compile.  The file state provider now
       should stop any actions to avoid any bad interactions during compilation. }
     procedure BeforeCompile;
-    //TODO: Comment
+    { This procedure is called when a file in the given directory has been changed.
+      The file state provider should either delete or update all cached states for
+      that directory }
     procedure FlushDir(const ADirectory: string);
-    //TODO: Comment    
+    { This procedure is called when the given file has been changed.  The file state
+      provider should either delete or update the cached state for that file }
     procedure FlushFile(const FileName: string);
-    //TODO: Comment
+    { Return in AFileState the file state information for the file given in FileName.
+      The return value of the function indicates if getting the information was successful,
+      was not successful for example if the file is not managed or if the operation was
+      deferred.
+
+      The file state provider should take that information from a cache, because this
+      function is called when the UI is updated and there must not be any slowdown.
+      If the information is not in the cache then the file state provider should return
+      fsrDeferred, gather the information in a background thread and call
+      IOTAProVersionControlServices.InvalidateControls when the information is in the cache }
     function GetFileState(const FileName: string; var AFileState: TOTAProFileState): TOTAProFileStateResult;
-    //TODO: Comment
+    { Return in AProperty an IProperty interface instance with file state related information
+      for the file given in FileName.  That information will be shown in the Object Inspector.
+
+      The function is similar to GetFileState apart from the fact that it returns an IProperty
+      interface instance than a TOTAProFileState record }
     function GetFileStateInfo(const FileName: string; var AProperty: IProperty): TOTAProFileStateResult;
   end;
 
   IOTAProVersionControlServices = interface(IOTAVersionControlServices)
   ['{FA453E38-6726-457D-8234-DC364709D57F}']
-    //TODO: Comment
+    { Returns the default TOTAProFileState record in AFileState for the state given by Index.
+      An example of a value for Index is fsiNormal.  Look above in this file for other constants.
+      The function returns True if the state was found and False if the state was not found }
     function GetDefaultFileStateValues(Index: Integer; var AFileState: TOTAProFileState): Boolean;
-    //TODO: Comment
+    { Invalidates all controls that show file states }
     procedure InvalidateControls;
-    { Registers a version control file state provider. Returns the index of the newly
+    { Registers a version control file state provider.  Returns the index of the newly
       registered file state provider }
     function RegisterFileStateProvider(const FileStateProvider: IOTAProVersionControlFileStateProvider): Integer;
     { Unregister a previously registered file state provider }

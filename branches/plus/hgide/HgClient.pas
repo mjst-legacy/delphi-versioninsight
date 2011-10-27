@@ -237,7 +237,7 @@ begin
 end;
 
 function InternalExecute(CommandLine: string; var Output: string; OutputLineCallback: TTextHandler;
-  RawOutput: Boolean; AbortPtr: PBoolean): Cardinal;
+  RawOutput: Boolean; AbortPtr: PBoolean; const CurrentDir: string): Cardinal;
 
 const
   BufferSize = 255;
@@ -286,6 +286,7 @@ var
   ProcessInfo: TProcessInformation;
   SecurityAttr: TSecurityAttributes;
   PipeRead, PipeWrite: THandle;
+  PCurrentDir: PChar;
 begin
   Result := $FFFFFFFF;
   SecurityAttr.nLength := SizeOf(SecurityAttr);
@@ -310,8 +311,12 @@ begin
   UniqueString(CommandLine); // CommandLine must be in a writable memory block
   ProcessInfo.dwProcessId := 0;
   try
+    if CurrentDir <> '' then
+      PCurrentDir := PChar(CurrentDir)
+    else
+      PCurrentDir := nil;
     if CreateProcess(nil, PChar(CommandLine), nil, nil, True, NORMAL_PRIORITY_CLASS,
-      nil, nil, StartupInfo, ProcessInfo) then
+      nil, PCurrentDir, StartupInfo, ProcessInfo) then
     begin
       CloseHandle(PipeWrite);
       PipeWrite := 0;
@@ -395,18 +400,18 @@ begin
 end;
 
 function Execute(const CommandLine: string; var Output: string; RawOutput: Boolean = False;
-  AbortPtr: PBoolean = nil): Cardinal; overload;
+  AbortPtr: PBoolean = nil; const CurrentDir: string = ''): Cardinal; overload;
 begin
-  Result := InternalExecute(CommandLine, Output, nil, RawOutput, AbortPtr);
+  Result := InternalExecute(CommandLine, Output, nil, RawOutput, AbortPtr, CurrentDir);
 end;
 
 function Execute(const CommandLine: string; OutputLineCallback: TTextHandler; RawOutput: Boolean = False;
-  AbortPtr: PBoolean = nil): Cardinal; overload;
+  AbortPtr: PBoolean = nil; const CurrentDir: string = ''): Cardinal; overload; overload;
 var
   Dummy: string;
 begin
   Dummy := '';
-  Result := InternalExecute(CommandLine, Dummy, OutputLineCallback, RawOutput, AbortPtr);
+  Result := InternalExecute(CommandLine, Dummy, OutputLineCallback, RawOutput, AbortPtr, CurrentDir);
 end;
 
 //------------------------------------------------------------------------------
@@ -495,17 +500,12 @@ var
   CurrentDir: string;
   FileContent: AnsiString;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(FParent.FFileName));
-    CmdLine := FParent.FHgClient.HgExecutable + ' cat -r ' + FChangeSet + ' ' + QuoteFileName(FParent.FFileName);
-    Res := Execute(CmdLine, Output);
-    FileContent := Output;
-    SetLength(Result, Length(FileContent));
-    Move(FileContent[1], Result[0], Length(FileContent));
-  finally
-    SetCurrentDir(CurrentDir);
-  end;
+  CurrentDir := ExtractFilePath(FParent.FFileName);
+  CmdLine := FParent.FHgClient.HgExecutable + ' cat -r ' + FChangeSet + ' ' + QuoteFileName(FParent.FFileName);
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  FileContent := Output;
+  SetLength(Result, Length(FileContent));
+  Move(FileContent[1], Result[0], Length(FileContent));
 end;
 
 procedure THgHistoryItem.LoadBlame;
@@ -516,15 +516,10 @@ var
   BlameItem: THgBlameItem;
   S, {S2, }CurrentDir, Hash: string;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(FParent.FFileName));
-    CmdLine := FParent.FHgClient.HgExecutable + Format(' annotate -r %d ', [FChangeSetID]);
-    CmdLine := CmdLine + QuoteFileName(ExtractFileName(FParent.FFileName));
-    Res := Execute(CmdLine, Output);
-  finally
-    SetCurrentDir(CurrentDir);
-  end;
+  CurrentDir := ExtractFilePath(FParent.FFileName);
+  CmdLine := FParent.FHgClient.HgExecutable + Format(' annotate -r %d ', [FChangeSetID]);
+  CmdLine := CmdLine + QuoteFileName(ExtractFileName(FParent.FFileName));
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
   FBlameItems.Clear;
   if Res = 0 then
   begin
@@ -570,15 +565,10 @@ var
   BlameItem: THgBlameItem;
   S, {S2, }CurrentDir, Hash: string;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(FParent.FFileName));
-    CmdLine := FParent.FHgClient.HgExecutable + Format(' st --rev %d --rev %d -m -a -r', [FChangeSetID - 1, FChangeSetID]);
-    CmdLine := CmdLine + QuoteFileName(ExtractFileName(FParent.FFileName));
-    Res := Execute(CmdLine, Output);
-  finally
-    SetCurrentDir(CurrentDir);
-  end;
+  CurrentDir := ExtractFilePath(FParent.FFileName);
+  CmdLine := FParent.FHgClient.HgExecutable + Format(' st --rev %d --rev %d -m -a -r', [FChangeSetID - 1, FChangeSetID]);
+  CmdLine := CmdLine + QuoteFileName(ExtractFileName(FParent.FFileName));
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
   FChangedFiles.Clear;
   if Res = 0 then
   begin
@@ -680,16 +670,11 @@ var
   FileContent: AnsiString;
 begin
   Result := -1;
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(FFileName));
-    CmdLine := FHgClient.HgExecutable + ' log -l 1 --template "{rev}" ' + QuoteFileName(FFileName);
-    Res := Execute(CmdLine, Output);
-    if (Res = 0) and (Trim(Output) <> '') then
-      Result := StrToIntDef(Output, -1);
-  finally
-    SetCurrentDir(CurrentDir);
-  end;
+  CurrentDir := ExtractFilePath(FFileName);
+  CmdLine := FHgClient.HgExecutable + ' log -l 1 --template "{rev}" ' + QuoteFileName(FFileName);
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  if (Res = 0) and (Trim(Output) <> '') then
+    Result := StrToIntDef(Output, -1);
 end;
 
 function THgItem.GetBaseFile: TBytes;
@@ -699,17 +684,12 @@ var
   CurrentDir: string;
   FileContent: AnsiString;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(FFileName));
-    CmdLine := FHgClient.HgExecutable + ' cat ' + QuoteFileName(FFileName);
-    Res := Execute(CmdLine, Output);
-    FileContent := Output;
-    SetLength(Result, Length(FileContent));
-    Move(FileContent[1], Result[0], Length(FileContent));
-  finally
-    SetCurrentDir(CurrentDir);
-  end;
+  CurrentDir := ExtractFilePath(FFileName);
+  CmdLine := FHgClient.HgExecutable + ' cat ' + QuoteFileName(FFileName);
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  FileContent := Output;
+  SetLength(Result, Length(FileContent));
+  Move(FileContent[1], Result[0], Length(FileContent));
 end;
 
 function THgItem.GetHistoryCount: Integer;
@@ -772,28 +752,23 @@ var
 begin
   StyleFileName := GetMapCmdlineVerInsFileName;
   UseStyleFile := (StyleFileName <> '') and FileExists(StyleFileName);
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(FFileName));
-    CmdLine := FHgClient.HgExecutable + ' log ';
-    if FLogFirstRev > 0 then
-      CmdLine := CmdLine + Format(' -r%d:%d', [FLogFirstRev, FLogFirstRev - FLogLimit + 1]);
-    if FLogLimit > 0 then
-      CmdLine := CmdLine + Format(' -l %d', [FLogLimit]);
-    if ExtractFileName(FFileName) <> '' then
-      CmdLine := CmdLine + ' ' + QuoteFileName(ExtractFileName(FFileName))
-    else
-      CmdLine := CmdLine + ' ' + QuoteFileName(ExcludeTrailingPathDelimiter(FFileName));
-    if UseStyleFile then
-    begin
-      CmdLine := CmdLine + Format(' --style=%s', [QuoteFileName(StyleFileName)]);
-      if FIncludeChangedFiles then
-        CmdLine := CmdLine + ' -v';
-    end;
-    Res := Execute(CmdLine, Output);
-  finally
-    SetCurrentDir(CurrentDir);
+  CurrentDir := ExtractFilePath(FFileName);
+  CmdLine := FHgClient.HgExecutable + ' log ';
+  if FLogFirstRev > 0 then
+    CmdLine := CmdLine + Format(' -r%d:%d', [FLogFirstRev, FLogFirstRev - FLogLimit + 1]);
+  if FLogLimit > 0 then
+    CmdLine := CmdLine + Format(' -l %d', [FLogLimit]);
+  if ExtractFileName(FFileName) <> '' then
+    CmdLine := CmdLine + ' ' + QuoteFileName(ExtractFileName(FFileName))
+  else
+    CmdLine := CmdLine + ' ' + QuoteFileName(ExcludeTrailingPathDelimiter(FFileName));
+  if UseStyleFile then
+  begin
+    CmdLine := CmdLine + Format(' --style=%s', [QuoteFileName(StyleFileName)]);
+    if FIncludeChangedFiles then
+      CmdLine := CmdLine + ' -v';
   end;
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
   FHistoryItems.Clear;
   if Res = 0 then
   begin
@@ -902,36 +877,31 @@ var
   CmdLine, Output: string;
   CurrentDir: string;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(FFileName));
-    CmdLine := FHgClient.HgExecutable + ' status ' + QuoteFileName(FFileName);
-    Res := Execute(CmdLine, Output);
-    if Res = 0 then
-    begin
-      if Pos('A ' + ExtractFileName(FFileName), Output) > 0 then
-        FStatus := gsAdded
-      else
-      if Pos('M ' + ExtractFileName(FFileName), Output) > 0 then
-        FStatus := gsModified
-      else
-      if Pos('R ' + ExtractFileName(FFileName), Output) > 0 then
-        FStatus := gsDeleted
-      else
-      if Pos('? ' + ExtractFileName(FFileName), Output) > 0 then
-        FStatus := gsUnversioned
-      else
-      if Pos('! ' + ExtractFileName(FFileName), Output) > 0 then
-        FStatus := gsMissing
-      else
-      if Trim(Output) = '' then
-        FStatus := gsNormal;
-    end
+  CurrentDir := ExtractFilePath(FFileName);
+  CmdLine := FHgClient.HgExecutable + ' status ' + QuoteFileName(FFileName);
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  if Res = 0 then
+  begin
+    if Pos('A ' + ExtractFileName(FFileName), Output) > 0 then
+      FStatus := gsAdded
     else
-      FStatus := gsUnknown;
-  finally
-    SetCurrentDir(CurrentDir);
-  end;
+    if Pos('M ' + ExtractFileName(FFileName), Output) > 0 then
+      FStatus := gsModified
+    else
+    if Pos('R ' + ExtractFileName(FFileName), Output) > 0 then
+      FStatus := gsDeleted
+    else
+    if Pos('? ' + ExtractFileName(FFileName), Output) > 0 then
+      FStatus := gsUnversioned
+    else
+    if Pos('! ' + ExtractFileName(FFileName), Output) > 0 then
+      FStatus := gsMissing
+    else
+    if Trim(Output) = '' then
+      FStatus := gsNormal;
+  end
+  else
+    FStatus := gsUnknown;
 end;
 
 { THgStatusList }
@@ -1010,77 +980,72 @@ begin
         LastIndex := DirItems.Last.Key;
         for I := 0 to DirItems.Count - 1 do
           LoadedItems.Add(DirItems[I].Key, 0);
-        CurrentDir := GetCurrentDir;
-        try
-          SetCurrentDir(ItemsDir);
-          CmdLine := FHgClient.HgExecutable + ' status -A';
-          for I := 0 to DirItems.Count - 1 do
-            CmdLine := CmdLine + ' ' + QuoteFileName(DirItems[I].Value);
-          Output := '';
-          Res := Execute(CmdLine, Output);
-          if Res = 0 then
-          begin
-            OutputStrings := TStringList.Create;
-            try
-              OutputStrings.Text := Output;
-              I := 0;
-              while I < OutputStrings.Count do
+        CurrentDir := ItemsDir;
+        CmdLine := FHgClient.HgExecutable + ' status -A';
+        for I := 0 to DirItems.Count - 1 do
+          CmdLine := CmdLine + ' ' + QuoteFileName(DirItems[I].Value);
+        Output := '';
+        Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+        if Res = 0 then
+        begin
+          OutputStrings := TStringList.Create;
+          try
+            OutputStrings.Text := Output;
+            I := 0;
+            while I < OutputStrings.Count do
+            begin
+              S := AnsiUpperCase(OutputStrings[I]);
+              if Length(S) > 2 then
               begin
-                S := AnsiUpperCase(OutputStrings[I]);
-                if Length(S) > 2 then
+                if S[1] = 'M' then
+                  Status := gsModified
+                else
+                if S[1] = 'A' then
+                  Status := gsAdded
+                else
+                if S[1] = 'R' then
+                  Status := gsDeleted
+                else
+                if S[1] = '?' then
+                  Status := gsUnversioned
+                else
+                if S[1] = '!' then
+                  Status := gsMissing
+                else
+                if S[1] = 'C' then
+                  Status := gsNormal
+                else
+                  Status := gsUnknown;
+                DelIdx := -1;
+                for J := 0 to DirItems.Count - 1 do
                 begin
-                  if S[1] = 'M' then
-                    Status := gsModified
-                  else
-                  if S[1] = 'A' then
-                    Status := gsAdded
-                  else
-                  if S[1] = 'R' then
-                    Status := gsDeleted
-                  else
-                  if S[1] = '?' then
-                    Status := gsUnversioned
-                  else
-                  if S[1] = '!' then
-                    Status := gsMissing
-                  else
-                  if S[1] = 'C' then
-                    Status := gsNormal
-                  else
-                    Status := gsUnknown;
-                  DelIdx := -1;
-                  for J := 0 to DirItems.Count - 1 do
+                  FileName := AnsiUpperCase(DirItems[J].Value);
+                  if Pos(FileName, S) = 3 then
                   begin
-                    FileName := AnsiUpperCase(DirItems[J].Value);
-                    if Pos(FileName, S) = 3 then
-                    begin
-                      Idx := DirItems[J].Key;
-                      Pair := Items[Idx];
-                      Pair.Value := Status;
-                      FList[Idx] := Pair;
-                      DelIdx := J;
-                      Break;
-                    end;
+                    Idx := DirItems[J].Key;
+                    Pair := Items[Idx];
+                    Pair.Value := Status;
+                    FList[Idx] := Pair;
+                    DelIdx := J;
+                    Break;
                   end;
-                  if DelIdx <> -1 then
-                    DirItems.Delete(DelIdx);
                 end;
-                Inc(I);
+                if DelIdx <> -1 then
+                  DirItems.Delete(DelIdx);
               end;
-            finally
-              OutputStrings.Free;
+              Inc(I);
             end;
-          end
-          else
-          for I := 0 to DirItems.Count - 1 do
-          begin
-            Idx := DirItems[I].Key;
-            Pair := Items[Idx];
-            Pair.Value := gsUnknown;
-            FList[Idx] := Pair;
+          finally
+            OutputStrings.Free;
           end;
-        finally
-          SetCurrentDir(CurrentDir);
+        end
+        else
+        for I := 0 to DirItems.Count - 1 do
+        begin
+          Idx := DirItems[I].Key;
+          Pair := Items[Idx];
+          Pair.Value := gsUnknown;
+          FList[Idx] := Pair;
         end;
       end
       else
@@ -1107,46 +1072,41 @@ begin
   if AFileList.Count > 0 then
   begin
     FLastCommitInfoChangeSetID := -1;
-    CurrentDir := GetCurrentDir;
-    try
-      SetCurrentDir(ExtractFilePath(AFileList[0]));
-      CmdLine := HgExecutable + ' commit -m ' + AnsiQuotedStr(AMessage, '"');
-      if AUser <> '' then
-        CmdLine := CmdLine + ' -u ' + AnsiQuotedStr(AUser, '"');
-      for I := 0 to AFileList.Count - 1 do
-        CmdLine := CmdLine + ' ' + QuoteFileName(AFileList[I]);
-      Res := Execute(CmdLine, Output);
-      if Res = 0 then
+    CurrentDir := ExtractFilePath(AFileList[0]);
+    CmdLine := HgExecutable + ' commit -m ' + AnsiQuotedStr(AMessage, '"');
+    if AUser <> '' then
+      CmdLine := CmdLine + ' -u ' + AnsiQuotedStr(AUser, '"');
+    for I := 0 to AFileList.Count - 1 do
+      CmdLine := CmdLine + ' ' + QuoteFileName(AFileList[I]);
+    Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+    if Res = 0 then
+    begin
+      if Pos('abort: empty commit message', Output) > 0 then
+        Result := hgeEmptyCommitMessage
+      else
+      if Pos('abort: no username supplied', Output) > 0 then
+        Result := hgeNoUsernameSupplied
+      else
+      if (Trim(Output) = '') or (Pos('abort:', Output) = 0) then
       begin
-        if Pos('abort: empty commit message', Output) > 0 then
-          Result := hgeEmptyCommitMessage
-        else
-        if Pos('abort: no username supplied', Output) > 0 then
-          Result := hgeNoUsernameSupplied
-        else
-        if (Trim(Output) = '') or (Pos('abort:', Output) = 0) then
+        Result := hgeSuccess;
+        CmdLine := HgExecutable + ' tip';
+        Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+        if Res = 0 then
         begin
-          Result := hgeSuccess;
-          CmdLine := HgExecutable + ' tip';
-          Res := Execute(CmdLine, Output);
-          if Res = 0 then
+          P := Pos('changeset:   ', Output);
+          if P > 0 then
           begin
-            P := Pos('changeset:   ', Output);
+            Delete(Output, 1, P + 10);
+            P := Pos(':', Output);
             if P > 0 then
             begin
-              Delete(Output, 1, P + 10);
-              P := Pos(':', Output);
-              if P > 0 then
-              begin
-                Delete(Output, P, Length(Output));
-                FLastCommitInfoChangeSetID := StrToIntDef(Trim(Output), -1);
-              end;
+              Delete(Output, P, Length(Output));
+              FLastCommitInfoChangeSetID := StrToIntDef(Trim(Output), -1);
             end;
           end;
         end;
       end;
-    finally
-      SetCurrentDir(CurrentDir);
     end;
   end;
 end;
@@ -1164,20 +1124,15 @@ var
   CmdLine, Output: string;
   CurrentDir: string;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(AFileName));
-    CmdLine := FHgExecutable + ' add ' + QuoteFileName(AFileName);
-    Res := Execute(CmdLine, Output);
-    Result := (Res = 0) and (Trim(Output) = '');
-    if Result then
-    begin
-      CmdLine := FHgExecutable + ' status ' + QuoteFileName(AFileName);
-      Res := Execute(CmdLine, Output);
-      Result := (Res = 0) and (Pos('A ' + ExtractFileName(AFileName), Output) > 0);
-    end;
-  finally
-    SetCurrentDir(CurrentDir);
+  CurrentDir := ExtractFilePath(AFileName);
+  CmdLine := FHgExecutable + ' add ' + QuoteFileName(AFileName);
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  Result := (Res = 0) and (Trim(Output) = '');
+  if Result then
+  begin
+    CmdLine := FHgExecutable + ' status ' + QuoteFileName(AFileName);
+    Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+    Result := (Res = 0) and (Pos('A ' + ExtractFileName(AFileName), Output) > 0);
   end;
 end;
 
@@ -1188,29 +1143,24 @@ var
   CmdLine: string;
   CurrentDir: string;
 begin
-  CurrentDir := GetCurrentDir;
+  ForceDirectories(ADestPath);
+  CurrentDir := ADestPath;
+  CmdLine := HgExecutable + ' clone -v ';
+  if ARevision <> '' then
+    CmdLine := CmdLine + Format('-r%s ', [ARevision]);
+  if AUncompressed then
+    CmdLine := CmdLine + '--uncompressed ';
+  if APull then
+    CmdLine := CmdLine + '--pull ';
+  CmdLine := CmdLine + QuoteFileName(ASourcePath) + ' .';
+  FCloneCallBack := ACallBack;
   try
-    ForceDirectories(ADestPath);
-    SetCurrentDir(ADestPath);
-    CmdLine := HgExecutable + ' clone -v ';
-    if ARevision <> '' then
-      CmdLine := CmdLine + Format('-r%s ', [ARevision]);
-    if AUncompressed then
-      CmdLine := CmdLine + '--uncompressed ';
-    if APull then
-      CmdLine := CmdLine + '--pull ';
-    CmdLine := CmdLine + QuoteFileName(ASourcePath) + ' .';
-    FCloneCallBack := ACallBack;
-    try
-      FCancel := False;
-      Res := Execute(CmdLine, ExecuteTextHandler, False, @FCancel);
-    finally
-      FCloneCallBack := nil;
-    end;
-    Result := Res = 0;
+    FCancel := False;
+    Res := Execute(CmdLine, ExecuteTextHandler, False, @FCancel, CurrentDir);
   finally
-    SetCurrentDir(CurrentDir);
+    FCloneCallBack := nil;
   end;
+  Result := Res = 0;
 end;
 
 procedure THgClient.ExecuteTextHandler(const Text: string);
@@ -1225,18 +1175,13 @@ var
   CmdLine, Output: string;
   CurrentDir: string;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(APath);
-    CmdLine := FHgExecutable + ' root';
-    Res := Execute(CmdLine, Output);
-    if Res = 0 then
-      Result := Trim(Output)
-    else
-      Result := '';
-  finally
-    SetCurrentDir(CurrentDir);
-  end;
+  CurrentDir := APath;
+  CmdLine := FHgExecutable + ' root';
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  if Res = 0 then
+    Result := Trim(Output)
+  else
+    Result := '';
 end;
 
 function THgClient.GetModifications(const APath: string; ACallBack: THgStatusCallback): Boolean;
@@ -1251,52 +1196,47 @@ begin
   Result := Assigned(ACallBack);
   if Result then
   begin
-    CurrentDir := GetCurrentDir;
-    try
-      SetCurrentDir(APath);
-      CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExcludeTrailingPathDelimiter(APath));
-      Res := Execute(CmdLine, Output);
-      Result := {(Res = 0) and }(Pos('abort: There is no Mercurial repository', Output) = 0);
-      if Result then
-      begin
-        OutputStrings := TStringList.Create;
-        try
-          OutputStrings.Text := Output;
-          Cancel := False;
-          for I := 0 to OutputStrings.Count - 1 do
+    CurrentDir := APath;
+    CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExcludeTrailingPathDelimiter(APath));
+    Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+    Result := {(Res = 0) and }(Pos('abort: There is no Mercurial repository', Output) = 0);
+    if Result then
+    begin
+      OutputStrings := TStringList.Create;
+      try
+        OutputStrings.Text := Output;
+        Cancel := False;
+        for I := 0 to OutputStrings.Count - 1 do
+        begin
+          S := OutputStrings[I];
+          if (Length(S) > 2) and (S[2] = ' ') then
           begin
-            S := OutputStrings[I];
-            if (Length(S) > 2) and (S[2] = ' ') then
-            begin
-              Assert((S[1] = 'M') or (S[1] = 'A') or (S[1] = 'R') or (S[1] = '?') or (S[1] = '!'));
-              HgItem := THgItem.Create(Self, IncludeTrailingPathDelimiter(APath) + Copy(S, 3, Length(S)));
-              if S[1] = 'M' then
-                HgItem.FStatus := gsModified
-              else
-              if S[1] = 'A' then
-                HgItem.FStatus := gsAdded
-              else
-              if S[1] = 'R' then
-                HgItem.FStatus := gsDeleted
-              else
-              if S[1] = '?' then
-                HgItem.FStatus := gsUnversioned
-              else
-              if S[1] = '!' then
-                HgItem.FStatus := gsMissing
-              else
-                HgItem.FStatus := gsUnknown;
-              ACallBack(Self, HgItem, Cancel);
-              if Cancel then
-                Break;
-            end;
+            Assert((S[1] = 'M') or (S[1] = 'A') or (S[1] = 'R') or (S[1] = '?') or (S[1] = '!'));
+            HgItem := THgItem.Create(Self, IncludeTrailingPathDelimiter(APath) + Copy(S, 3, Length(S)));
+            if S[1] = 'M' then
+              HgItem.FStatus := gsModified
+            else
+            if S[1] = 'A' then
+              HgItem.FStatus := gsAdded
+            else
+            if S[1] = 'R' then
+              HgItem.FStatus := gsDeleted
+            else
+            if S[1] = '?' then
+              HgItem.FStatus := gsUnversioned
+            else
+            if S[1] = '!' then
+              HgItem.FStatus := gsMissing
+            else
+              HgItem.FStatus := gsUnknown;
+            ACallBack(Self, HgItem, Cancel);
+            if Cancel then
+              Break;
           end;
-        finally
-          OutputStrings.Free;
         end;
+      finally
+        OutputStrings.Free;
       end;
-    finally
-      SetCurrentDir(CurrentDir);
     end;
   end;
 end;
@@ -1334,15 +1274,10 @@ var
   CmdLine, Output: string;
   CurrentDir: string;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(AFileName));
-    CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExtractFileName(AFileName));
-    Res := Execute(CmdLine, Output);
-    Result := (Res = 0) and (Pos('abort: There is no Mercurial repository', Output) = 0);
-  finally
-    SetCurrentDir(CurrentDir);
-  end;
+  CurrentDir := ExtractFilePath(AFileName);
+  CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExtractFileName(AFileName));
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  Result := (Res = 0) and (Pos('abort: There is no Mercurial repository', Output) = 0);
 end;
 
 function THgClient.Revert(const AFileName: string): Boolean;
@@ -1351,20 +1286,15 @@ var
   CmdLine, Output: string;
   CurrentDir: string;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(AFileName));
-    CmdLine := FHgExecutable + ' revert ' + QuoteFileName(AFileName);
-    Res := Execute(CmdLine, Output);
-    Result := (Res = 0) and (Trim(Output) = '');
-    if Result then
-    begin
-      CmdLine := FHgExecutable + ' status ' + QuoteFileName(AFileName);
-      Res := Execute(CmdLine, Output);
-      Result := (Res = 0) and ((Trim(Output) = '') or (Pos('? ' + AFileName, Output) > 0));
-    end;
-  finally
-    SetCurrentDir(CurrentDir);
+  CurrentDir := ExtractFilePath(AFileName);
+  CmdLine := FHgExecutable + ' revert ' + QuoteFileName(AFileName);
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  Result := (Res = 0) and (Trim(Output) = '');
+  if Result then
+  begin
+    CmdLine := FHgExecutable + ' status ' + QuoteFileName(AFileName);
+    Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+    Result := (Res = 0) and ((Trim(Output) = '') or (Pos('? ' + AFileName, Output) > 0));
   end;
 end;
 
@@ -1376,17 +1306,12 @@ var
   CurrentDir: string;
   FileContent: AnsiString;
 begin
-  CurrentDir := GetCurrentDir;
-  try
-    SetCurrentDir(ExtractFilePath(AFileName));
-    CmdLine := HgExecutable + ' cat -r ' + IntToStr(ARevision) + ' ' + QuoteFileName(AFileName);
-    Res := Execute(CmdLine, Output);
-    FileContent := Output;
-    if Length(FileContent) > 0 then
-      OutputStream.Write(FileContent[1], Length(FileContent));
-  finally
-    SetCurrentDir(CurrentDir);
-  end;
+  CurrentDir := ExtractFilePath(AFileName);
+  CmdLine := HgExecutable + ' cat -r ' + IntToStr(ARevision) + ' ' + QuoteFileName(AFileName);
+  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  FileContent := Output;
+  if Length(FileContent) > 0 then
+    OutputStream.Write(FileContent[1], Length(FileContent));
 end;
 
 end.

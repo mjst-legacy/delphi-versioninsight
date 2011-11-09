@@ -1191,13 +1191,23 @@ var
   OutputStrings: TStringList;
   CurrentDir: string;
   HgItem: THgItem;
-  Cancel: Boolean;
+  Cancel, IsDirectory: Boolean;
 begin
   Result := Assigned(ACallBack);
   if Result then
   begin
-    CurrentDir := APath;
-    CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExcludeTrailingPathDelimiter(APath));
+    if DirectoryExists(APath) then
+    begin
+      CurrentDir := APath;
+      IsDirectory := True;
+      CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExcludeTrailingPathDelimiter(APath));
+    end
+    else
+    begin
+      CurrentDir := ExtractFilePath(APath);
+      IsDirectory := False;
+      CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExtractFileName(APath));
+    end;
     Res := Execute(CmdLine, Output, False, nil, CurrentDir);
     Result := {(Res = 0) and }(Pos('abort: There is no Mercurial repository', Output) = 0);
     if Result then
@@ -1212,7 +1222,10 @@ begin
           if (Length(S) > 2) and (S[2] = ' ') then
           begin
             Assert((S[1] = 'M') or (S[1] = 'A') or (S[1] = 'R') or (S[1] = '?') or (S[1] = '!'));
-            HgItem := THgItem.Create(Self, IncludeTrailingPathDelimiter(APath) + Copy(S, 3, Length(S)));
+            if IsDirectory then
+              HgItem := THgItem.Create(Self, IncludeTrailingPathDelimiter(APath) + Copy(S, 3, Length(S)))
+            else
+              HgItem := THgItem.Create(Self, ExtractFilePath(APath) + Copy(S, 3, Length(S)));
             if S[1] = 'M' then
               HgItem.FStatus := gsModified
             else

@@ -116,6 +116,8 @@ type
     procedure BeforeCOmpile;
     procedure FlushDir(const ADirectory: string);
     procedure FlushFile(const FileName: string);
+    function GetCommonFileState(const FileName: string; AChildFiles: TStrings;
+      var AFileState: TOTAProFileState): TOTAProFileStateResult;
     function GetFileState(const FileName: string; var AFileState: TOTAProFileState): TOTAProFileStateResult;
     function GetFileStateInfo(const FileName: string; var AProperty: IProperty): TOTAProFileStateResult;
   public
@@ -437,6 +439,66 @@ begin
   if Assigned(FSingleton) then
     for I := 0 to AFileList.Count - 1 do
       FSingleton.FlushFile(AFileList[I]);
+end;
+
+function TIOTAProVersionControlFileStateProvider.GetCommonFileState(
+  const FileName: string; AChildFiles: TStrings;
+  var AFileState: TOTAProFileState): TOTAProFileStateResult;
+var
+  I: Integer;
+  Deferred, Modified: Boolean;
+  CurrentResult: TOTAProFileStateResult;
+  CurrentState: TOTAProFileState;
+  States: TList<TOTAProFileState>;
+begin
+  CurrentResult := GetFileState(FileName, CurrentState);
+  if CurrentResult in [fsrError, fsrDeferred] then
+    Result := CurrentResult
+  else
+  if CurrentState.FileStateIndex <> fsiNormal then
+  begin
+    Result := CurrentResult;
+    AFileState := CurrentState;
+  end
+  else
+  begin
+    States := TList<TOTAProFileState>.Create;
+    try
+      States.Add(CurrentState);
+      Deferred := False;
+      for I := 0 to AChildFiles.Count - 1 do
+      begin
+        CurrentResult := GetFileState(AChildFiles[I], CurrentState);
+        if CurrentResult = fsrOK then
+          States.Add(CurrentState)
+        else
+        if CurrentResult = fsrDeferred then
+        begin
+          Deferred := True;
+          Break;
+        end;
+      end;
+      if Deferred then
+        Result := fsrDeferred
+      else
+      begin
+        Modified := False;
+        for I := 0 to States.Count - 1 do
+          if not (States[I].FileStateIndex in [fsiNormal, fsiReadOnly, fsiLocked, fsiIgnored, fsiNonVersioned]) then
+          begin
+            Modified := True;
+            Break;
+          end;
+        if Modified then
+          (BorlandIDEServices as IOTAProVersionControlServices).GetDefaultFileStateValues(fsiModified, AFileState)
+        else
+          AFileState := States[0];
+        Result := fsrOK;
+      end;
+    finally
+      States.Free;
+    end;
+  end;
 end;
 
 function TIOTAProVersionControlFileStateProvider.GetFileState(const FileName: string;

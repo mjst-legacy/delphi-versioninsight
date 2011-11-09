@@ -3637,7 +3637,7 @@ var
     pool: PAprPool): PSvnError; cdecl;
   svn_client_merge_reintegrate: function(source: PAnsiChar; peg_revision: PSvnOptRevision; target_wcpath: PAnsiChar;
     dry_run: TSvnBoolean; merge_options: PAprArrayHeader; ctx: PSvnClientCtx; pool: PAprpool): PSvnError; cdecl;
-  svn_client_merge_peg3: function(source: PAnsiChar; peg_revision: PSvnOptRevision; target_wcpath: PAnsiChar;
+  svn_client_merge_peg3: function(source: PAnsiChar; ranges_to_merge: PAprArrayHeader; peg_revision: PSvnOptRevision; target_wcpath: PAnsiChar;
     depth: TSvnDepth; ignore_ancestry, force, record_only, dry_run: TSvnBoolean; merge_options: PAprArrayHeader;
     ctx: PSvnClientCtx; pool: PAprPool): PSvnError; cdecl;
   svn_client_merge_peg2: function(source: PAnsiChar; revision1, revision2, peg_revision: PSvnOptRevision;

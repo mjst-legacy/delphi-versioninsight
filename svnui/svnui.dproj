@@ -123,6 +123,9 @@
 			<DCCReference Include="SvnClientEditComment.pas">
 				<Form>EditCommentDialog</Form>
 			</DCCReference>
+			<DCCReference Include="SvnClientLogDialog.pas">
+				<Form>SvnLogDialog</Form>
+			</DCCReference>
 			<None Include="RAD Studio Version Insight MPL License.txt"/>
 			<BuildConfiguration Include="Debug">
 				<Key>Cfg_2</Key>

@@ -273,6 +273,9 @@ type
       Update: Boolean = False; DoReload:Boolean = False); overload;
     constructor Create(ASvnClient: TSvnClient; AParent: TSvnItem; const ASvnPathName: string;
       const Status: TSvnWcStatus2); overload;
+    { TSvnItem for URLs is some kind of a hack and right now don't expect
+      anything else to work than asynchronous history loading }
+    constructor Create(ASvnClient: TSvnClient; const AURL: string); overload;
     destructor Destroy; override;
 
     function Add(Item: TSvnItem): Integer;
@@ -423,6 +426,39 @@ type
     property FetchLocks: Boolean read FFetchLocks;
     property Items[Index: Integer]: TSvnListItem read GetItems; default;
     property PathName: string read FPathName;
+  end;
+
+  TSvnMergeRevisionRange = class(TObject)
+  private
+    FEndRevision: TSvnRevNum;
+    FStartRevision: TSvnRevNum;
+  public
+    constructor Create(AStartRevision: TSvnRevNum; AEndRevision: TSvnRevNum);
+    property EndRevision: TSvnRevNum read FEndRevision;
+    property StartRevision: TSvnRevNum read FStartRevision;
+  end;
+
+  TSvnMergeRevisionList = class(TPersistent)
+  private
+    FItems: TObjectList;
+    function GetCount: Integer;
+    function GetItems(AIndex: Integer): TSvnMergeRevisionRange;
+    function GetAsString: string;
+    procedure SetAsString(const Value: string);
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure AddRevision(ARevision: TSvnRevNum);
+    procedure AddRevisionRange(AStartRevision: TSvnRevNum; AEndRevision: TSvnRevNum);
+    procedure Clear;
+    function IsValidRangeStr(const AValue: string): Boolean;
+    procedure PrepareForMerge(AHeadRevision: TSvnRevNum = -1; AReverseMerge: Boolean = False);
+    function ToAprArray(ASvnClient: TSvnClient; SubPool: PAprPool = nil): PAprArrayHeader;
+    property AsString: string read GetAsString write SetAsString;
+    property Count: Integer read GetCount;
+    property Items[AIndex: Integer]: TSvnMergeRevisionRange read GetItems; default;
   end;
 
   TSvnConfigItemState = (scisDefault, scisSet, scisRemove);
@@ -616,6 +652,7 @@ type
     function GetBaseURL(AFilesAndDirectories: TStringList; var ABasePath: string): string;
     procedure GetChangeLists(const PathName: string; ChangeLists: TStrings; SvnDepth: TSvnDepth = svnDepthInfinity; SubPool: PAprPool = nil);
     procedure GetExternals(const PathName: string; Externals: TStrings; Recurse: Boolean = True);
+    function GetHeadRevision(const URL: string; SubPool: PAprPool = nil): TSvnRevNum;
     function GetMaxRevision(const PathName: string; SubPool: PAprPool = nil): Integer;
     function GetModifications(const PathName: string; Callback: TSvnStatusCallback = nil;
       Recurse: Boolean = True; Update: Boolean = False; IgnoreExternals: Boolean = False;
@@ -636,6 +673,11 @@ type
       const TargetWcpath: string; Callback: TSvnNotifyCallback = nil; SvnCancelCallback: TSvnCancelCallback = nil;
       Depth: TSvnDepth = svnDepthInfinity; IgnoreAncestry: TSvnBoolean = False; Force: TSvnBoolean = False;
       RecordOnly: TSvnBoolean = False; DryRun: TSvnBoolean = False; SubPool: PAprPool = nil);
+    procedure MergePeg(const Source: string; RangesToMerge: TSvnMergeRevisionList; const TargetWcpath: string;
+      PegRevision: TSvnRevNum = -1; Callback: TSvnNotifyCallback = nil; SvnCancelCallback: TSvnCancelCallback = nil;
+      Depth: TSvnDepth = svnDepthInfinity; IgnoreAncestry: TSvnBoolean = False; Force: TSvnBoolean = False;
+      RecordOnly: TSvnBoolean = False; DryRun: TSvnBoolean = False; IgnoreEOL: Boolean = False; IgnoreSpace: Boolean = False;
+      IgnoreSpaceAll: Boolean = False; SubPool: PAprPool = nil);
     function MkDir(const Paths: TStringList; const Comment: string; MakeParents: Boolean = False; SubPool: PAprPool = nil): Boolean;
     function MatchGlobalIgnores(const PathName: string; SubPool: PAprPool = nil): Boolean;
     procedure Move(SrcPathNames: TStrings; const DstPath: string; Force: Boolean = True; MoveAsChild: Boolean = False;
@@ -2222,6 +2264,32 @@ begin
   FDestroyNotifications := nil;
 end;
 
+constructor TSvnItem.Create(ASvnClient: TSvnClient; const AURL: string);
+var
+  Status: TSvnWcStatus2;
+begin
+  inherited Create;
+  FSvnClient := ASvnClient;
+  FSvnPathName := '';
+  FParent := nil;
+  FItems := nil;
+  FHistory := nil;
+  FProps := nil;
+  FFileAttr := 0;
+  FPathName := '';
+  FSmallImageIndex := -1;
+  FLargeImageIndex := -1;
+  FPropValDelimiter := ';';
+  FLogLimit := 0;
+  FLogFirstRev := -1;
+  FLogLastRev := -1;
+  Status.entry := nil;
+  Status.repos_lock := nil;
+  LoadStatus(Status);
+  FURL := AURL;
+  FDestroyNotifications := nil;
+end;
+
 destructor TSvnItem.Destroy;
 var
   I: Integer;
@@ -2638,6 +2706,243 @@ begin
   FSvnClient.List(FPathName, FDepth, FFetchLocks, FDirEntryFields, ListCallback, Revision);
 end;
 
+{ TSvnMergeRevisionRange }
+
+constructor TSvnMergeRevisionRange.Create(AStartRevision, AEndRevision: TSvnRevNum);
+begin
+  inherited Create;
+  FStartRevision := AStartRevision;
+  FEndRevision := AEndRevision;
+end;
+
+{ TSvnMergeRevisionList }
+
+procedure TSvnMergeRevisionList.AddRevision(ARevision: TSvnRevNum);
+begin
+  AddRevisionRange(ARevision, ARevision);
+end;
+
+procedure TSvnMergeRevisionList.AddRevisionRange(AStartRevision, AEndRevision: TSvnRevNum);
+begin
+  FItems.Add(TSvnMergeRevisionRange.Create(AStartRevision, AEndRevision));
+end;
+
+procedure TSvnMergeRevisionList.AssignTo(Dest: TPersistent);
+var
+  I: Integer;
+begin
+  if Dest is TSvnMergeRevisionList then
+  begin
+    TSvnMergeRevisionList(Dest).Clear;
+    for I := 0 to Count - 1 do
+      TSvnMergeRevisionList(Dest).AddRevisionRange(Items[I].StartRevision, Items[I].EndRevision);
+  end
+  else
+    inherited AssignTo(Dest);
+end;
+
+procedure TSvnMergeRevisionList.Clear;
+begin
+  FItems.Clear;
+end;
+
+constructor TSvnMergeRevisionList.Create;
+begin
+  inherited Create;
+  FItems := TObjectList.Create;
+end;
+
+destructor TSvnMergeRevisionList.Destroy;
+begin
+  FItems.Free;
+  inherited Destroy;
+end;
+
+function TSvnMergeRevisionList.GetAsString: string;
+
+  function RevisionToStr(ARevision: TSvnRevNum): string;
+  begin
+    if ARevision = -1 then
+      Result := 'HEAD'
+    else
+      Result := IntToStr(ARevision);
+  end;
+
+var
+  I: Integer;
+  S: string;
+begin
+  Result := '';
+  for I := 0 to Count - 1 do
+  begin
+    if Items[I].StartRevision = Items[I].EndRevision then
+      S := RevisionToStr(Items[I].StartRevision)
+    else
+      S := Format('%s-%s', [RevisionToStr(Items[I].StartRevision), RevisionToStr(Items[I].EndRevision)]);
+    if Result <> '' then
+      Result := Result + ',' + S
+    else
+      Result := S;
+  end;
+end;
+
+function TSvnMergeRevisionList.GetCount: Integer;
+begin
+  Result := FItems.Count;
+end;
+
+function TSvnMergeRevisionList.GetItems(AIndex: Integer): TSvnMergeRevisionRange;
+begin
+  Result := TSvnMergeRevisionRange(FItems[AIndex]);
+end;
+
+function TSvnMergeRevisionList.IsValidRangeStr(const AValue: string): Boolean;
+
+  function IsValidStrToRevision(const AValue: string): Boolean;
+  var
+    Dummy: Integer;
+  begin
+    if AnsiSameText('HEAD', AValue) then
+      Result := True
+    else
+      Result := TryStrToInt(AValue, Dummy);
+  end;
+
+var
+  I, P: Integer;
+  SL: TStringList;
+begin
+  Result := True;
+  SL := TStringList.Create;
+  try
+    SL.Delimiter := ',';
+    SL.StrictDelimiter := True;
+    SL.DelimitedText := AValue;
+    for I := 0 to SL.Count - 1 do
+    begin
+      P := Pos('-', SL[I]);
+      if P > 0 then
+      begin
+        if not IsValidStrToRevision(Trim(Copy(SL[I], 1, P - 1))) or
+          not IsValidStrToRevision(Trim(Copy(SL[I], P + 1, MaxInt))) then
+        begin
+          Result := False;
+          Break;
+        end;
+      end
+      else
+      if not IsValidStrToRevision(Trim(SL[I])) then
+      begin
+        Result := False;
+        Break;
+      end;
+    end;
+  finally
+    SL.Free;
+  end;
+end;
+
+procedure TSvnMergeRevisionList.PrepareForMerge(AHeadRevision: TSvnRevNum;
+  AReverseMerge: Boolean);
+var
+  I, StartRev, EndRev: Integer;
+begin
+  if Count = 0 then
+    AddRevisionRange(1, -1);
+  for I := 0 to Count - 1 do
+  begin
+    if Items[I].StartRevision = -1 then
+      Items[I].FStartRevision := AHeadRevision;
+    if Items[I].EndRevision = -1 then
+      Items[I].FEndRevision := AHeadRevision;
+    if AReverseMerge then
+    begin
+      StartRev := Items[I].StartRevision;
+      EndRev := Items[I].EndRevision;
+      Items[I].FStartRevision := EndRev;
+      Items[I].FEndRevision := StartRev - 1;
+    end
+    else
+      Items[I].FStartRevision := Items[I].StartRevision - 1;
+  end;
+end;
+
+procedure TSvnMergeRevisionList.SetAsString(const Value: string);
+
+  function StrToRevision(const AValue: string): Integer;
+  begin
+    if AnsiSameText('HEAD', AValue) then
+      Result := -1
+    else
+      Result := StrToInt(AValue);
+  end;
+
+var
+  I, P, Rev, StartRev, EndRev: Integer;
+  SL: TStringList;
+begin
+  Clear;
+  SL := TStringList.Create;
+  try
+    SL.Delimiter := ',';
+    SL.StrictDelimiter := True;
+    SL.DelimitedText := Value;
+    for I := 0 to SL.Count - 1 do
+    begin
+      P := Pos('-', SL[I]);
+      if P > 0 then
+      begin
+        StartRev := StrToRevision(Trim(Copy(SL[I], 1, P - 1)));
+        EndRev := StrToRevision(Trim(Copy(SL[I], P + 1, MaxInt)));
+        AddRevisionRange(StartRev, EndRev);
+      end
+      else
+      begin
+        Rev := StrToRevision(Trim(SL[I]));
+        AddRevision(Rev);
+      end;
+    end;
+  finally
+    SL.Free;
+  end;
+end;
+
+function TSvnMergeRevisionList.ToAprArray(ASvnClient: TSvnClient; SubPool: PAprPool): PAprArrayHeader;
+type
+  PPSvnOptRevisionRange = ^PSvnOptRevisionRange;
+var
+  NewPool: Boolean;
+  I: Integer;
+  Range: PSvnOptRevisionRange;
+begin
+  Result := nil;
+
+  if Count = 0 then
+    Exit;
+
+  if not ASvnClient.Initialized then
+    ASvnClient.Initialize;
+
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, ASvnClient.Pool, nil, ASvnClient.Allocator));
+  try
+    Result := apr_array_make(SubPool, Count, SizeOf(PSvnOptRevisionRange));
+    for I := 0 to Count - 1 do
+    begin
+      Range := apr_pcalloc(SubPool, SizeOf(TSvnOptRevisionRange));
+      Range^.rev_start.Kind := svnOptRevisionNumber;
+      Range^.rev_start.Value.number := Items[I].StartRevision;
+      Range^.rev_end.Kind := svnOptRevisionNumber;
+      Range^.rev_end.Value.number := Items[I].EndRevision;
+      PPSvnOptRevisionRange(apr_array_push(Result))^ := Range;
+    end;
+  finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
 { TSvnConfigString }
 
 constructor TSvnConfigString.Create;
@@ -2923,6 +3228,25 @@ begin
     SvnCheck(svn_client_status2(nil, PAnsiChar(UTF8Encode(SvnPathName)),
       @Revision, WCStatus4, Pointer(@Status), False, True, False, False, False,
       FCtx, SubPool));
+  finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
+function TSvnClient.GetHeadRevision(const URL: string; SubPool: PAprPool): TSvnRevNum;
+var
+  NewPool: Boolean;
+  EncodedURL: PAnsiChar;
+  RASession: PSvnRaSession;
+begin
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    EncodedURL := svn_path_uri_encode(PAnsiChar(UTF8Encode(URL)), SubPool);
+    SvnCheck(svn_client_open_ra_session(RASession, EncodedURL, FCtx, SubPool));
+    SvnCheck(svn_ra_get_latest_revnum(RASession, Result, SubPool));
   finally
     if NewPool then
       apr_pool_destroy(SubPool);
@@ -4164,6 +4488,73 @@ begin
   end;
 end;
 
+procedure TSvnClient.MergePeg(const Source: string; RangesToMerge: TSvnMergeRevisionList;
+  const TargetWcpath: string; PegRevision: TSvnRevNum;
+  Callback: TSvnNotifyCallback; SvnCancelCallback: TSvnCancelCallback;
+  Depth: TSvnDepth; IgnoreAncestry, Force, RecordOnly, DryRun: TSvnBoolean;
+  IgnoreEOL: Boolean; IgnoreSpace: Boolean; IgnoreSpaceAll: Boolean;
+  SubPool: PAprPool);
+var
+  NewPool: Boolean;
+  PegRev: TSvnOptRevision;
+  RangesToMergeArray: PAprArrayHeader;
+  EncodedSource: PAnsiChar;
+  SaveCancel: TSvnCancelCallback;
+
+  Options: TStringList;
+  OptionsArray: PAprArrayHeader;
+begin
+  if not Initialized then
+    Initialize;
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    Options := TStringList.Create;
+    try
+      if IgnoreEOL then
+        Options.Add('--ignore-eol-style');
+      if IgnoreSpaceAll then
+        Options.Add('-w')
+      else
+      if IgnoreSpace then
+        Options.Add('-b');
+      if Options.Count > 0 then
+        OptionsArray := StringListToAprArray(Options, SubPool)
+      else
+        OptionsArray := nil;
+    finally
+      Options.Free;
+    end;
+    RangesToMergeArray := RangesToMerge.ToAprArray(Self, SubPool);
+    FillChar(PegRev, SizeOf(TSvnOptRevision), 0);
+    if PegRevision <= 0 then
+      PegRev.Kind := svnOptRevisionHead
+    else
+    begin
+      PegRev.Kind := svnOptRevisionNumber;
+      PegRev.Value.number := PegRevision;
+    end;
+    FCancelled := False;
+    FNotifyCallback := Callback;
+    SaveCancel := FOnCancel;
+    try
+      if Assigned(SvnCancelCallback) then
+        FOnCancel := SvnCancelCallback;
+      EncodedSource := svn_path_uri_encode(PAnsiChar(UTF8Encode(Source)), SubPool);
+      SvnCheck(svn_client_merge_peg3(EncodedSource, RangesToMergeArray, @PegRev,
+        PAnsiChar(UTF8Encode(TargetWcpath)), Depth, IgnoreAncestry, Force, RecordOnly, DryRun,
+        OptionsArray, FCtx, SubPool));
+    finally
+      FOnCancel := SaveCancel;
+    end;
+  finally
+    FNotifyCallback := nil;
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
 function TSvnClient.MkDir(const Paths: TStringList; const Comment: string;
   MakeParents: Boolean; SubPool: PAprPool): Boolean;
 var
@@ -4527,6 +4918,8 @@ var
   Targets: PAprArrayHeader;
   Error: PSvnError;
   PCtx: PSvnClientCtx;
+  EncodedURL: PAnsiChar;
+  SL: TStringList;
 begin
   NameThreadForDebugging('DelphiSVN History Updater');
   FSvnItem.FHistory := TList.Create;
@@ -4550,7 +4943,19 @@ begin
         EndRevision.Value.number := 0
       else
         EndRevision.Value.number := FSvnItem.LogLastRev;
-      Targets := FSvnItem.SvnClient.PathNamesToAprArray([FSvnItem.SvnPathName], SubPool);
+      if (FSvnItem.SvnPathName = '') and (FSvnItem.URL <> '') then
+      begin
+        EncodedURL := svn_path_uri_encode(PAnsiChar(UTF8Encode(FSvnItem.URL)), SubPool);
+        SL := TStringList.Create;
+        try
+          SL.Add(EncodedURL);
+          Targets := FSvnItem.SvnClient.StringListToAprArray(SL, SubPool);
+        finally
+          SL.Free;
+        end;
+      end
+      else
+        Targets := FSvnItem.SvnClient.PathNamesToAprArray([FSvnItem.SvnPathName], SubPool);
       FSvnItem.SvnClient.FCancelled := False;
       svn_client_create_context(PCtx, SubPool);
       PCtx^ := FSvnItem.SvnClient.Ctx^;

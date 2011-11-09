@@ -44,6 +44,8 @@ type
   end;
 
   TParentMergeSvnMenu = class(TSvnMenu)
+  protected
+    function GetImageIndex: Integer; override;
   public
     constructor Create;
   end;
@@ -58,9 +60,16 @@ type
     constructor Create(ASvnIDEClient: TSvnIDEClient);
   end;
 
+  TDirMergeSvnMenu = class(TBaseMergeSvnMenu)
+  protected
+    function GetImageIndex: Integer; override;
+  public
+    constructor Create(ASvnIDEClient: TSvnIDEClient);
+  end;
+
 implementation
 
-uses SysUtils, SvnIDEConst, ToolsAPI, Controls, Forms,
+uses SysUtils, SvnIDEConst, ToolsAPI, Controls, Forms, SvnIDEIcons,
   SvnIDETypes, SvnClientRepoBrowserDialog;
 
 const
@@ -181,6 +190,11 @@ begin
   FHelpContext := 0;
 end;
 
+function TParentMergeSvnMenu.GetImageIndex: Integer;
+begin
+  Result := MergeImageIndex;
+end;
+
 { TRootDirMergeSvnMenu }
 
 constructor TRootDirMergeSvnMenu.Create(ASvnIDEClient: TSvnIDEClient);
@@ -203,6 +217,24 @@ begin
   FVerb := sPMVProjectDirMerge;
   FPosition := pmmpProjectDirMergeSvnMenu;
   FHelpContext := 0;
+end;
+
+{ TDirMergeSvnMenu }
+
+constructor TDirMergeSvnMenu.Create(ASvnIDEClient: TSvnIDEClient);
+begin
+  inherited Create(ASvnIDEClient);
+  FRootType := rtDir;
+  FParent := sPMVSvnParent;
+  FCaption := sPMMMerge;
+  FVerb := sPMVDirMerge;
+  FPosition := pmmpProjectDirMergeSvnMenu;
+  FHelpContext := 0;
+end;
+
+function TDirMergeSvnMenu.GetImageIndex: Integer;
+begin
+  Result := MergeImageIndex;
 end;
 
 end.

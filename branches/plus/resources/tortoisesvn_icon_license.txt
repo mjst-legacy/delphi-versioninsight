@@ -4,6 +4,7 @@ menucleanup.ico
 menucommit.ico
 menuimport.ico
 menulog.ico
+menumerge.ico
 menurepobrowse.ico
 menuupdate.ico
 

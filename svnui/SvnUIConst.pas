@@ -72,6 +72,8 @@ resourcestring
   sCreateChangeListCaption = 'Create Changelist';
   sCreateChangeListPrompt = 'Enter a name for the changelist:';
   sSelCountTotalCount = '%d files selected, %d files total';
+  sMergeCaption = 'Merge';
+  sNextCaption = '&Next >';
 
 implementation
 

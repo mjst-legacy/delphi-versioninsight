@@ -56,7 +56,8 @@ contains
   SvnClientProgress in 'SvnClientProgress.pas' {SvnProgressDialog},
   SvnClientRangeSelect in 'SvnClientRangeSelect.pas' {SvnRangeSelectDialog},
   SvnClientEditComment in 'SvnClientEditComment.pas' {EditCommentDialog},
-  SvnClientLogDialog in 'SvnClientLogDialog.pas' {SvnLogDialog};
+  SvnClientLogDialog in 'SvnClientLogDialog.pas' {SvnLogDialog},
+  SvnClientMerge in 'SvnClientMerge.pas' {SvnMergeDialog};
 
 end.
 

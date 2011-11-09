@@ -14,8 +14,8 @@
 { The Original Code is SvnIDETypes.pas.                                        }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2010 Uwe Schuster. All      }
-{ Rights Reserved.                                                             }
+{ Portions created by Uwe Schuster are Copyright © 2010 - 2011 Uwe Schuster.   }
+{ All Rights Reserved.                                                         }
 {                                                                              }
 { Contributors:                                                                }
 { Uwe Schuster (uschuster)                                                     }
@@ -63,6 +63,30 @@ type
     procedure Execute; override;
   public
     constructor Create(SvnIDEClient: TSvnIDEClient; AURL, APath: string; ARevision1, ARevision2: Integer); reintroduce;
+  end;
+
+  TMergeRangeThread = class(TCustomUpdateThread)
+  protected
+    FURL: string;
+    FRangesToMerge: TSvnMergeRevisionList;
+    FPegRevision: Integer;
+    FTargetWcpath: string;
+    FDepth: TSvnDepth;
+    FIgnoreAncestry: TSvnBoolean;
+    FForce: TSvnBoolean;
+    FRecordOnly: TSvnBoolean;
+    FDryRun: TSvnBoolean;
+    FIgnoreEOL: Boolean;
+    FIgnoreSpace: Boolean;
+    FIgnoreSpaceAll: Boolean;
+    procedure Execute; override;
+  public
+    constructor Create(SvnIDEClient: TSvnIDEClient; const AURL: string; ARangesToMerge: TSvnMergeRevisionList;
+      APegRevision: Integer; const ATargetWcpath: string;
+      ADepth: TSvnDepth = svnDepthInfinity; AIgnoreAncestry: TSvnBoolean = False; AForce: TSvnBoolean = False;
+      ARecordOnly: TSvnBoolean = False; ADryRun: TSvnBoolean = False; AIgnoreEOL: Boolean = False;
+      AIgnoreSpace: Boolean = False; AIgnoreSpaceAll: Boolean = False); reintroduce;
+    destructor Destroy; override;
   end;
 
   TCustomProgressThread = class(TThread)
@@ -267,6 +291,65 @@ begin
   try
     FExceptionMessage := '';
     FSvnIDEClient.SvnClient.Merge(FURL, FRevision1, FURL, FRevision2, FPath, UpdateCallBack, CancelCallback);
+  except
+    if not GetSvnExceptionMessage(ExceptObject, FExceptionMessage) then
+      raise;
+  end;
+  Synchronize(nil, SyncCompleted);
+end;
+
+{ TMergeRangeThread }
+
+constructor TMergeRangeThread.Create(SvnIDEClient: TSvnIDEClient; const AURL: string;
+  ARangesToMerge: TSvnMergeRevisionList; APegRevision: Integer; const ATargetWcpath: string;
+  ADepth: TSvnDepth = svnDepthInfinity; AIgnoreAncestry: TSvnBoolean = False; AForce: TSvnBoolean = False;
+  ARecordOnly: TSvnBoolean = False; ADryRun: TSvnBoolean = False; AIgnoreEOL: Boolean = False;
+  AIgnoreSpace: Boolean = False; AIgnoreSpaceAll: Boolean = False);
+var
+  I: Integer;
+  RevisionStr: string;
+begin
+  inherited Create(SvnIDEClient);
+  FURL := AURL;
+  FRangesToMerge := TSvnMergeRevisionList.Create;
+  FRangesToMerge.Assign(ARangesToMerge);
+  FPegRevision := APegRevision;
+  FTargetWcpath := ATargetWcpath;
+  FDepth := ADepth;
+  FIgnoreAncestry := AIgnoreAncestry;
+  FForce := AForce;
+  FRecordOnly := ARecordOnly;
+  FDryRun := ADryRun;
+  FIgnoreEOL := AIgnoreEOL;
+  FIgnoreSpace := AIgnoreSpace;
+  FIgnoreSpaceAll := AIgnoreSpaceAll;
+  RevisionStr := '';
+  for I := 0 to FRangesToMerge.Count - 1 do
+    if RevisionStr <> '' then
+      RevisionStr := RevisionStr + ',' + Format('%d-%d', [FRangesToMerge[I].StartRevision, FRangesToMerge[I].EndRevision])
+    else
+      RevisionStr := Format('%d-%d', [FRangesToMerge[I].StartRevision, FRangesToMerge[I].EndRevision]);
+  FDryRun := ADryRun;
+  FUpdateDialog := GetUpdateDialog('', AbortCallBack, nil, nil);
+  FUpdateDialog.Caption := Format(sMergeDialogCaptionRange,
+    [RevisionStr, AURL, StringReplace(ATargetWcpath, '/', '\', [rfReplaceAll])]);
+  FUpdateDialog.Show;
+  Resume;
+end;
+
+destructor TMergeRangeThread.Destroy;
+begin
+  FRangesToMerge.Free;
+  inherited Destroy;
+end;
+
+procedure TMergeRangeThread.Execute;
+begin
+  NameThreadForDebugging('DelphiSVN Merge Range');
+  try
+    FExceptionMessage := '';
+    FSvnIDEClient.SvnClient.MergePeg(FURL, FRangesToMerge, FTargetWcpath, FPegRevision, UpdateCallBack, CancelCallback,
+      FDepth, FIgnoreAncestry, FForce, FRecordOnly, FDryRun, FIgnoreEOL, FIgnoreSpace, FIgnoreSpaceAll);
   except
     if not GetSvnExceptionMessage(ExceptObject, FExceptionMessage) then
       raise;

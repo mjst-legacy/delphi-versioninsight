@@ -51,7 +51,8 @@ contains
   SvnIDERepoBrowser in 'SvnIDERepoBrowser.pas',
   SvnIDEAddInOptions in 'SvnIDEAddInOptions.pas',
   SvnIDEColors in 'SvnIDEColors.pas',
-  SvnIDETypes in 'SvnIDETypes.pas';
+  SvnIDETypes in 'SvnIDETypes.pas',
+  SvnIDEMerge in 'SvnIDEMerge.pas';
 
 end.
 

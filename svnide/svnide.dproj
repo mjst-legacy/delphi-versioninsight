@@ -74,6 +74,7 @@
 			<DCCReference Include="SvnIDEAddInOptions.pas"/>
 			<DCCReference Include="SvnIDEColors.pas"/>
 			<DCCReference Include="SvnIDETypes.pas"/>
+			<DCCReference Include="SvnIDEMerge.pas"/>
 			<None Include="RAD Studio Version Insight MPL License.txt"/>
 			<BuildConfiguration Include="Debug">
 				<Key>Cfg_2</Key>

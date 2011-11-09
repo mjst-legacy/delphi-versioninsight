@@ -74,12 +74,15 @@ type
   end;
 
   TOTAProFileState = record
+    { Index of a common state like fsiNormal.  Look above in this file for other constants.
+      Use -1 or values greater than the provided constants for other states }
+    FileStateIndex: Integer;
     { Index of the image to be used for the Project Manager tree view and the editor tabs.
       The value is the index in the imagelist of the version control service.  You should
       first add items to this list using INTAProVersionControlServices.AddImages }
     OverlayImageIndex: Integer;
     { Index of the image to be used for the editors status bar.  The value is the index in
-      the imagelist of the version control service.  You should first add items to this 
+      the imagelist of the version control service.  You should first add items to this
       list using INTAProVersionControlServices.AddImages }
     StatusBarImageIndex: Integer;
     { Text used for the file state to be used for the editors status bar. }
@@ -95,7 +98,7 @@ type
   TOTAProFileStateResult = (fsrOK, fsrError, fsrDeferred);
 
   IOTAProVersionControlFileStateProvider = interface(IInterface)
-  ['{44D6006E-D97A-4C05-BE4B-785CB99AB888}']
+  ['{675E2793-7051-418B-8663-EA492596E758}']
     { This procedure is called after a compile.  The file state provider can now
       perform again any actions. }
     procedure AfterCompile;
@@ -109,6 +112,12 @@ type
     { This procedure is called when the given file has been changed.  The file state
       provider should either delete or update the cached state for that file }
     procedure FlushFile(const FileName: string);
+    { Return in AFileState the common file state information for the file given in FileName
+      and the associated files in the AChildFiles list.
+
+      The function is similar to GetFileState }
+    function GetCommonFileState(const FileName: string; AChildFiles: TStrings;
+      var AFileState: TOTAProFileState): TOTAProFileStateResult;
     { Return in AFileState the file state information for the file given in FileName.
       The return value of the function indicates if getting the information was successful,
       was not successful for example if the file is not managed or if the operation was

@@ -69,6 +69,8 @@ type
   end;
 
   TFileCommitHgMenu = class(TBaseCommitHgMenu)
+  protected
+    function GetImageIndex: Integer; override;
   public
     constructor Create(ASvnIDEClient: THgIDEClient);
   end;
@@ -270,6 +272,11 @@ begin
   FVerb := sPMVCommit;
   FPosition := pmmpFileCommitSvnMenu;
   FHelpContext := 0;
+end;
+
+function TFileCommitHgMenu.GetImageIndex: Integer;
+begin
+  Result := CommitImageIndex;
 end;
 
 { TDirCommitHgMenu }

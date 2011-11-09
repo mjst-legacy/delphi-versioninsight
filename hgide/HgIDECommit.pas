@@ -515,8 +515,8 @@ var
   FilesAndDirectoriesInRepo: TStringList;
 begin
   //TODO: add support for FRootType = rtExpicitFiles
-  if FDirectoryList.Count = 1 then
-    AURL := FDirectoryList[0];
+  if FDirectoryList.Count >= 1 then
+    AURL := ExtractFilePath(FDirectoryList[0]);
   FilesAndDirectoriesInRepo := TStringList.Create;
   try
     FilesAndDirectoriesInRepo.Assign(FDirectoryList);

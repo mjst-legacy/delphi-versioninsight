@@ -942,13 +942,23 @@ var
   OutputStrings: TStringList;
   CurrentDir: string;
   GitItem: TGitItem;
-  Cancel: Boolean;
+  Cancel, IsDirectory: Boolean;
 begin
   Result := Assigned(ACallBack);
   if Result then
   begin
-    CurrentDir := APath;
-    CmdLine := GitExecutable + ' status -s -uall .';
+    if DirectoryExists(APath) then
+    begin
+      CurrentDir := APath;
+      IsDirectory := True;
+      CmdLine := GitExecutable + ' status -s -uall .';
+    end
+    else
+    begin
+      CurrentDir := ExtractFilePath(APath);
+      IsDirectory := False;
+      CmdLine := GitExecutable + ' status -s -uall ' + QuoteFileName(ExtractFileName(APath));
+    end;
     Res := Execute(CmdLine, Output, False, nil, CurrentDir);
     Result := Res = 0;
     if Result then
@@ -965,7 +975,10 @@ begin
             S := StringReplace(S, '/', '\', [rfReplaceAll]);
             StatusStr := Trim(Copy(S, 1, 2));
             Assert((StatusStr[1] = 'M') or (StatusStr[1] = 'A') or (StatusStr[1] = 'D') or (StatusStr[1] = '?'));
-            GitItem := TGitItem.Create(Self, IncludeTrailingPathDelimiter(APath) + Copy(S, 4, Length(S)));
+            if IsDirectory then
+              GitItem := TGitItem.Create(Self, IncludeTrailingPathDelimiter(APath) + Copy(S, 4, Length(S)))
+            else
+              GitItem := TGitItem.Create(Self, ExtractFilePath(APath) + Copy(S, 4, Length(S)));
             if StatusStr[1] = 'M' then
               GitItem.FStatus := gsModified
             else

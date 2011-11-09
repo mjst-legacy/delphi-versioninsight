@@ -612,10 +612,9 @@ procedure THgNotifier.ProjectManagerMenu(const Project: IOTAProject;
   end;
 
 begin
-  //ProjectManagerMenuList.Add(PMMSvnParent);//so far the file menu doesn't exist -> add root item only in the Project branch
+  ProjectManagerMenuList.Add(PMMSvnParent);
   if ContainersProject then
   begin
-    ProjectManagerMenuList.Add(PMMSvnParent);
     ProjectManagerMenuList.Add(PMMParentCommit);
     ProjectManagerMenuList.Add(PMMRootDirCommit);
     ProjectManagerMenuList.Add(PMMProjectDirCommit);
@@ -653,8 +652,8 @@ begin
   PMMRootDirCommit := TRootDirCommitHgMenu.Create(AHgIDEClient);
   PMMProjectDirCommit := TProjectDirCommitHgMenu.Create(AHgIDEClient);
   //PMMExpicitFilesCommit := TExpicitFilesCommitHgMenu.Create(AHgIDEClient);
+  PMMFileCommit := TFileCommitHgMenu.Create(AHgIDEClient);
   {//TODO:1
-  PMMFileCommit := TFileCommitSvnMenu.Create(ASvnIDEClient);
   PMMParentUpdate := TParentUpdateSvnMenu.Create;
   PMMRootDirUpdate := TRootDirUpdateSvnMenu.Create(ASvnIDEClient);
   PMMProjectDirUpdate := TProjectDirUpdateSvnMenu.Create(ASvnIDEClient);

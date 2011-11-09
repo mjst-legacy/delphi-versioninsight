@@ -609,10 +609,9 @@ procedure TGitNotifier.ProjectManagerMenu(const Project: IOTAProject;
   end;
 
 begin
-  //ProjectManagerMenuList.Add(PMMSvnParent);//so far the file menu doesn't exist -> add root item only in the Project branch
+  ProjectManagerMenuList.Add(PMMSvnParent);
   if ContainersProject then
   begin
-    ProjectManagerMenuList.Add(PMMSvnParent);
     ProjectManagerMenuList.Add(PMMParentCommit);
     ProjectManagerMenuList.Add(PMMRootDirCommit);
     ProjectManagerMenuList.Add(PMMProjectDirCommit);
@@ -650,8 +649,8 @@ begin
   PMMRootDirCommit := TRootDirCommitGitMenu.Create(AGitIDEClient);
   PMMProjectDirCommit := TProjectDirCommitGitMenu.Create(AGitIDEClient);
   //PMMExpicitFilesCommit := TExpicitFilesCommitGitMenu.Create(AGitIDEClient);
+  PMMFileCommit := TFileCommitGitMenu.Create(AGitIDEClient);
   {//TODO:1
-  PMMFileCommit := TFileCommitSvnMenu.Create(ASvnIDEClient);
   PMMParentUpdate := TParentUpdateSvnMenu.Create;
   PMMRootDirUpdate := TRootDirUpdateSvnMenu.Create(ASvnIDEClient);
   PMMProjectDirUpdate := TProjectDirUpdateSvnMenu.Create(ASvnIDEClient);

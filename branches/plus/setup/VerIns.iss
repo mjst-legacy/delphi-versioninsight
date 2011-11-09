@@ -149,6 +149,62 @@ begin
   Result := GetVersionInsightOfficePackageName(sVersion) <> '';
 end;
 
+function GetSystemExecutableName(const sVersion, sSystem: string): string;
+begin
+  if (not RegQueryStringValue (HKCU, 'Software\Embarcadero\BDS\' + sVersion + '\VersionInsight\' + sSystem, 'Executable', Result)) or
+    ((Result <> '') and not FileExists(Result)) then
+    Result := '';
+end;
+
+function GetSystemExecutableNames(const sSystem: string; AFiles: TStringList): Integer;
+var
+  sSelTasks, FileName: string;
+begin
+  sSelTasks := AnsiUpperCase(WizardSelectedTasks(False));
+  if Pos('IDE_REGISTER\IDE\XE', sSelTasks) > 0 then
+  begin
+    FileName := GetSystemExecutableName('8.0', sSystem);
+    if (FileName <> '') and (AFiles.IndexOf(FileName) = -1) then
+      AFiles.Add(FileName);
+  end;
+  if Pos('IDE_REGISTER\IDE\XE2', sSelTasks) > 0 then
+  begin
+    FileName := GetSystemExecutableName('9.0', sSystem);
+    if (FileName <> '') and (AFiles.IndexOf(FileName) = -1) then
+      AFiles.Add(FileName);
+  end;
+  Result := AFiles.Count;
+end;
+
+function SetSystemExecutableName(const sSystem: string): Boolean;
+var
+  Cnt: Integer;
+  Files: TStringList;
+begin
+  Files := TStringList.Create;
+  try
+    if sSystem = 'Git' then
+    begin
+      Cnt := GetSystemExecutableNames(sSystem, Files);
+      if (Cnt > 0) and (GitFilePage.Values[0] = '') then
+        GitFilePage.Values[0] := Files[0];
+      Result := (Cnt = 1) and (GitFilePage.Values[0] <> '');
+    end
+    else
+    if sSystem = 'Mercurial' then
+    begin
+      Cnt := GetSystemExecutableNames(sSystem, Files);
+      if (Cnt > 0) and (HgFilePage.Values[0] = '') then
+        HgFilePage.Values[0] := Files[0];
+      Result := (Cnt = 1) and (HgFilePage.Values[0] <> '');
+    end
+    else
+      Result := False;
+  finally
+    Files.Free; 
+  end;
+end;
+
 { =============================================================================
   Purpose  : InnoSetup event handler which is called on change to another
              wizard page
@@ -236,6 +292,12 @@ begin
         RegDeleteValue (HKCU, 'Software\Embarcadero\BDS\9.0\Known Packages', GetVersionInsightOfficePackageName('9.0'));
       end;        
     end;  // curPage = csTerminate
+  else
+    if CurPage = GitFilePage.ID then
+      SetSystemExecutableName('Git')
+    else
+    if CurPage = HgFilePage.ID then
+      SetSystemExecutableName('Mercurial');
   end;  // case
 end;
 

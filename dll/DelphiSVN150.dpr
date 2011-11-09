@@ -30,6 +30,7 @@ uses
   SvnClientProgress in '..\svnui\SvnClientProgress.pas' {SvnProgressDialog},
   SvnClientRangeSelect in '..\svnui\SvnClientRangeSelect.pas' {SvnRangeSelectDialog},
   SvnClientEditComment in '..\svnui\SvnClientEditComment.pas' {EditCommentDialog},
+  SvnClientLogDialog in '..\svnui\SvnClientLogDialog.pas' {SvnLogDialog},
   SvnIDEClient in '..\svnide\SvnIDEClient.pas',
   SvnIDEHistory in '..\svnide\SvnIDEHistory.pas',
   SvnIDEConst in '..\svnide\SvnIDEConst.pas',

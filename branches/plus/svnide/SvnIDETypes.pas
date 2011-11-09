@@ -28,7 +28,7 @@ interface
 
 uses
   Classes, Graphics, Generics.Collections, ActiveX, svn_client, SvnIDEClient,
-  SvnClientUpdate, SvnClientProgress;
+  SvnClientUpdate, SvnClientProgress, SvnClient, SvnClientLog, SvnClientLogDialog;
 
 type
   TCustomUpdateThread = class(TThread)
@@ -122,10 +122,37 @@ type
     procedure AddFile(const AFileName: string);
   end;
 
+  TLogDialogHelper = class(TObject, IInterface, IAsyncUpdate)
+  private
+    FFirst: Integer;
+    FLogDialog: TSvnLogDialog;
+    FRootPath: string;
+    FSvnClient: TSvnClient;
+    FSvnItem: TSvnItem;
+    FSvnLogFrame: TSvnLogFrame;
+    FURL: string;
+    { IInterface }
+    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+    function _AddRef: Integer; stdcall;
+    function _Release: Integer; stdcall;
+    { IAsyncUpdate }
+    procedure UpdateHistoryItems(SvnItem: TSvnItem; FirstNewIndex, LastNewIndex: Integer;
+      ForceUpdate: Boolean);
+    procedure Completed;
+    { CallBacks }
+    procedure LoadRevisionsCallBack(FirstRevision, LastRevision: Integer; Count: Integer);
+    function FileColorCallBack(Action: Char): TColor;
+  public
+    constructor Create(SvnClient: TSvnClient; const ARootPath, AURL: string);
+    destructor Destroy; override;
+    function Show(ASelectedRevisions: TList<Integer>): Boolean; overload;
+    procedure Show; overload;
+  end;
+
 implementation
 
 uses
-  SysUtils, SvnConst, SvnClient, SvnIDEConst, Forms, ToolsAPI, FileCtrl;
+  SysUtils, Controls, SvnConst, SvnIDEConst, Forms, ToolsAPI, FileCtrl;
 
 const
   cFileNameTag = 'fn';
@@ -445,6 +472,146 @@ begin
       Break;
   end;
   Synchronize(SyncCloseDialog);
+end;
+
+{ TLogDialogHelper }
+
+constructor TLogDialogHelper.Create(SvnClient: TSvnClient; const ARootPath, AURL: string);
+begin
+  inherited Create;
+  FSvnClient := SvnClient;
+  FRootPath := ARootPath;
+  FURL := AURL;
+end;
+
+destructor TLogDialogHelper.Destroy;
+begin
+  inherited Destroy;
+end;
+
+function TLogDialogHelper.FileColorCallBack(Action: Char): TColor;
+begin
+  Result := IDEClient.Colors.GetLogActionColor(Action);
+end;
+
+procedure TLogDialogHelper.Completed;
+begin
+  if Assigned(FSvnLogFrame) then
+    FSvnLogFrame.NextCompleted;
+end;
+
+procedure TLogDialogHelper.LoadRevisionsCallBack(FirstRevision, LastRevision,
+  Count: Integer);
+begin
+  if FirstRevision = -1 then
+    FFirst := 0;
+  FSvnItem.LogLimit := Count;
+  FSvnItem.LogFirstRev := FirstRevision;
+  FSvnItem.LogLastRev := LastRevision;
+  FSvnItem.AsyncUpdate := Self;
+  FSvnLogFrame.StartAsync;
+  FSvnItem.AsyncReloadHistory;
+end;
+
+function TLogDialogHelper.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+  if GetInterface(IID, Obj) then
+    Result := S_OK
+  else
+    Result := E_NOINTERFACE;
+end;
+
+procedure TLogDialogHelper.Show;
+begin
+  Show(nil);
+end;
+
+function TLogDialogHelper.Show(ASelectedRevisions: TList<Integer>): Boolean;
+var
+  I, StartIdx: Integer;
+  Status: TSvnWcStatus2;
+begin
+  Status.entry := nil;
+  Status.repos_lock := nil;
+  FLogDialog := TSvnLogDialog.Create(Application);
+  try
+    FSvnLogFrame := FLogDialog.LogFrame;
+    FSvnLogFrame.FileColorCallBack := FileColorCallBack;
+    FSvnLogFrame.LoadRevisionsCallBack := LoadRevisionsCallBack;
+    if FRootPath <> '' then
+    begin
+      FLogDialog.Caption := Format('%s %s', [sLog, FRootPath]);
+      FSvnItem := TSvnItem.Create(FSvnClient, nil, FRootPath, True);
+    end
+    else
+    begin
+      FLogDialog.Caption := Format('%s %s', [sLog, FURL]);
+      FSvnItem := TSvnItem.Create(FSvnClient, FURL);
+    end;
+    FSvnItem.AsyncUpdate := Self;
+    FSvnItem.IncludeChangeFiles := True;
+    FSvnItem.LogLimit := DefaultRange;
+    Application.ProcessMessages;
+    FSvnLogFrame.StartAsync;
+    FSvnItem.AsyncReloadHistory;
+    Result := FLogDialog.ShowModal = mrOk;
+    if Result and Assigned(ASelectedRevisions) then
+    begin
+      ASelectedRevisions.Clear;
+      if FSvnLogFrame.Revisions.SelCount > 0 then
+        begin
+          StartIdx := FSvnLogFrame.Revisions.Selected.Index;
+          for I := StartIdx to FSvnLogFrame.Revisions.Items.Count - 1 do
+            if FSvnLogFrame.Revisions.Items[I].Selected then
+              ASelectedRevisions.Insert(0, StrToInt(FSvnLogFrame.Revisions.Items[I].Caption));
+        end;
+    end;
+  finally
+    FLogDialog.Free;
+  end;
+end;
+
+procedure TLogDialogHelper.UpdateHistoryItems(SvnItem: TSvnItem; FirstNewIndex,
+  LastNewIndex: Integer; ForceUpdate: Boolean);
+var
+  I: Integer;
+  HistoryItem: TSvnHistoryItem;
+  CanUpdate: Boolean;
+  BugID: string;
+begin
+  CanUpdate := (FirstNewIndex = 0) or ((LastNewIndex - FFirst <> 0 ) and ((LastNewIndex - FFirst) Mod 20 = 0));
+  if CanUpdate or ForceUpdate then
+  begin
+    FSvnLogFrame.BeginUpdate;
+    try
+      for I := FFirst to LastNewIndex do
+      begin
+        HistoryItem := SvnItem.HistoryItems[I];
+        {//TODO: Add bug ID parser
+        if FBugIDParser.BugTraqLogRegEx <> '' then
+          BugID := FBugIDParser.GetBugID(HistoryItem.LogMessage)
+        else
+        }
+          BugID := '';
+        FSvnLogFrame.AddRevisions(HistoryItem.Revision, HistoryItem.Time,
+          HistoryItem.Author, HistoryItem.LogMessage, BugID, HistoryItem.ChangeFiles);
+      end;
+    finally
+      FSvnLogFrame.EndUpdate;
+    end;
+    FFirst := LastNewIndex + 1;
+    Application.ProcessMessages;
+  end;
+end;
+
+function TLogDialogHelper._AddRef: Integer;
+begin
+  Result := -1;
+end;
+
+function TLogDialogHelper._Release: Integer;
+begin
+  Result := -1;
 end;
 
 end.

@@ -55,7 +55,8 @@ contains
   SvnClientOptionsFrame in 'SvnClientOptionsFrame.pas' {SvnOptionsFrame: TFrame},
   SvnClientProgress in 'SvnClientProgress.pas' {SvnProgressDialog},
   SvnClientRangeSelect in 'SvnClientRangeSelect.pas' {SvnRangeSelectDialog},
-  SvnClientEditComment in 'SvnClientEditComment.pas' {EditCommentDialog};
+  SvnClientEditComment in 'SvnClientEditComment.pas' {EditCommentDialog},
+  SvnClientLogDialog in 'SvnClientLogDialog.pas' {SvnLogDialog};
 
 end.
 

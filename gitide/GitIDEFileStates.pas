@@ -382,7 +382,8 @@ end;
 procedure TIOTAProVersionControlFileStateProvider.BeforeCompile;
 begin
   Inc(FUpdateCount);
-  FThread.Suspend;
+  if not FThread.Suspended then
+    FThread.Suspend;
 end;
 
 procedure TIOTAProVersionControlFileStateProvider.FlushDir(const ADirectory: string);

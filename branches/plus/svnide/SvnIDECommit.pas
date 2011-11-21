@@ -552,6 +552,8 @@ var
   URL: string;
 begin
   FSvnCommitFrame := TSvnCommitFrame(AFrame);
+  if IDEClient.Options.AlternativeCommitLayout then
+    FSvnCommitFrame.EnableAlternativeLayout;
   Cursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
   Application.ProcessMessages;

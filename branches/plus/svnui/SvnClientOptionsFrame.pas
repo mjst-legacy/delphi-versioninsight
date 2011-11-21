@@ -46,6 +46,7 @@ type
     cbStatusColorsEnabled: TCheckBox;
     GroupBox2: TGroupBox;
     cbDeleteBackupFilesAfterCommit: TCheckBox;
+    cbAlternativeCommitLayout: TCheckBox;
   private
     { Private declarations }
   public

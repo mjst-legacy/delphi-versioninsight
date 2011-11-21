@@ -104,7 +104,7 @@ object SvnOptionsFrame: TSvnOptionsFrame
     Left = 8
     Top = 207
     Width = 305
-    Height = 50
+    Height = 74
     Caption = ' Options '
     TabOrder = 1
     object cbDeleteBackupFilesAfterCommit: TCheckBox
@@ -114,6 +114,14 @@ object SvnOptionsFrame: TSvnOptionsFrame
       Height = 17
       Caption = 'Delete backup files after commit'
       TabOrder = 0
+    end
+    object cbAlternativeCommitLayout: TCheckBox
+      Left = 5
+      Top = 46
+      Width = 172
+      Height = 17
+      Caption = 'Alternative Commit Layout'
+      TabOrder = 1
     end
   end
 end

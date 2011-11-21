@@ -45,11 +45,13 @@ uses SvnClient, svn_client, Classes, SysUtils, SvnIDEColors;
 type
   TSvnOptions = class(TObject)
   private
+    FAlternativeCommitLayout: Boolean;
     FDeleteBackupFilesAfterCommit: Boolean;
   public
     constructor Create;
     procedure Load;
     procedure Save;
+    property AlternativeCommitLayout: Boolean read FAlternativeCommitLayout write FAlternativeCommitLayout;
     property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
   end;
 
@@ -117,6 +119,7 @@ const
  sUrlHistoryItem = 'URLHistory%d';
  MaxURLHistory = 20;
  cOptions = 'Options';
+ cAlternativeCommitLayout = 'AlternativeCommitLayout';
  cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
 
 type
@@ -173,6 +176,7 @@ end;
 constructor TSvnOptions.Create;
 begin
   inherited Create;
+  FAlternativeCommitLayout := False;
   FDeleteBackupFilesAfterCommit := False;
   Load;
 end;
@@ -188,6 +192,9 @@ begin
     if not Reg.KeyExists(BaseKey) then
       Exit;
     Reg.OpenKeyReadOnly(BaseKey);
+    Key := cAlternativeCommitLayout;
+    if Reg.ValueExists(Key) then
+      FAlternativeCommitLayout := Reg.ReadBool(Key);
     Key := cDeleteBackupFilesAfterCommit;
     if Reg.ValueExists(Key) then
       FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
@@ -205,6 +212,7 @@ begin
   try
     BaseKey := BaseRegKey + cOptions;
     Reg.OpenKey(BaseKey, True);
+    Reg.WriteBool(cAlternativeCommitLayout, FAlternativeCommitLayout);
     Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
   finally
     Reg.Free;

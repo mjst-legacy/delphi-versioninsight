@@ -541,6 +541,8 @@ var
   URL: string;
 begin
   FSvnCommitFrame := TGitCommitFrame(AFrame);
+  if IDEClient.Options.AlternativeCommitLayout then
+    FSvnCommitFrame.EnableAlternativeLayout;
   Cursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
   Application.ProcessMessages;

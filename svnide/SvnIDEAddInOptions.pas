@@ -68,6 +68,7 @@ begin
     Colors[ssckModified] := FFrame.cboxModified.Selected;
     IDEClient.Colors.Colors := Colors;
     IDEClient.Colors.Save;
+    IDEClient.Options.AlternativeCommitLayout := FFrame.cbAlternativeCommitLayout.Checked;
     IDEClient.Options.DeleteBackupFilesAfterCommit := FFrame.cbDeleteBackupFilesAfterCommit.Checked;
     IDEClient.Options.Save;
   end;
@@ -82,6 +83,7 @@ begin
   FFrame.cboxDeleted.Selected := IDEClient.Colors.Colors[ssckDeleted];
   FFrame.cboxMerged.Selected := IDEClient.Colors.Colors[ssckMerged];
   FFrame.cboxModified.Selected := IDEClient.Colors.Colors[ssckModified];
+  FFrame.cbAlternativeCommitLayout.Checked := IDEClient.Options.AlternativeCommitLayout;
   FFrame.cbDeleteBackupFilesAfterCommit.Checked := IDEClient.Options.DeleteBackupFilesAfterCommit;
 end;
 

@@ -137,6 +137,7 @@ type
     procedure AddToNewChangeListClick(Sender: TObject);
     procedure MoveToChangeListActionExecute(Sender: TObject);
   protected
+    FAlternativeLayoutEnabled: Boolean;
     FAddToChangeListCallBack: TAddToChangeListCallBack;
     FCommitCallBack: TCommitCallBack;
     FCloseCallBack: TCloseCallBack;
@@ -182,6 +183,7 @@ type
     destructor Destroy; override;
     procedure Add(const SvnListItem: TSvnListViewItem);
     procedure BeginUpdate;
+    procedure EnableAlternativeLayout;
     procedure EndUpdate;
     procedure CheckForNoFilesVisible;
     procedure RefreshAdd(const SvnListItem: TSvnListViewItem);
@@ -553,6 +555,7 @@ end;
 constructor TSvnCommitFrame.Create(AOwner: TComponent);
 begin
   inherited;
+  FAlternativeLayoutEnabled := False;
   FItemList := TList<TSvnListViewItem>.Create;
   FItemList.OnNotify := Notify;
   FIndexList := TList<Integer>.Create;
@@ -680,6 +683,39 @@ begin
       FExecutingRefresh := False;
     end;
   end;
+end;
+
+procedure TSvnCommitFrame.EnableAlternativeLayout;
+var
+  PixelsPerInch: Integer;
+begin
+  FAlternativeLayoutEnabled := True;
+  //PixelsPerInch := Screen.PixelsPerInch;
+  PixelsPerInch := 96;
+  UpperPanel.Align := alTop;
+  UpperPanel.Height := MulDiv(163, PixelsPerInch, 96);
+
+  Label2.Parent := UpperPanel;
+  Label2.Top := MulDiv(56, PixelsPerInch, 96);
+
+  Comment.Parent := UpperPanel;
+  Comment.Top := MulDiv(72, PixelsPerInch, 96);
+  Comment.Height := UpperPanel.Height - Comment.Top;
+
+  Recent.Parent := UpperPanel;
+  Recent.Top := MulDiv(43, PixelsPerInch, 96);
+  Recent.Anchors := [akTop, akRight];
+
+  LowerPanel.Align := alClient;
+  Splitter1.Top := LowerPanel.Top - 1;
+  Splitter1.Align := alTop;
+
+  Files.Parent := LowerPanel;
+  Files.Top := MulDiv(6, PixelsPerInch, 96);
+  Files.Height := MulDiv(UnversionedFiles.Top - 12, PixelsPerInch, 96);
+
+  SelCountTotalCount.Top := UnversionedFiles.Top;
+  SelCountTotalCount.Anchors := [akRight, akBottom];
 end;
 
 procedure TSvnCommitFrame.EndUpdate;
@@ -1113,6 +1149,8 @@ var
   LongestCheckBoxWidth: Integer;
   HeightDelta: Integer;
 begin
+  if FAlternativeLayoutEnabled then
+    Exit;
   //find widest checkbox (they *should* all be the smae width)
   LongestCheckBoxWidth := UnversionedFiles.Width;
   if Externals.Width > LongestCheckBoxWidth then

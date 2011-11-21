@@ -2,7 +2,7 @@ object frmGitTestsOptions: TfrmGitTestsOptions
   Left = 0
   Top = 0
   Width = 414
-  Height = 341
+  Height = 365
   TabOrder = 0
   object GroupBox1: TGroupBox
     Left = 8
@@ -134,7 +134,7 @@ object frmGitTestsOptions: TfrmGitTestsOptions
     Left = 8
     Top = 278
     Width = 305
-    Height = 50
+    Height = 74
     Caption = ' Options '
     TabOrder = 2
     object cbDeleteBackupFilesAfterCommit: TCheckBox
@@ -144,6 +144,14 @@ object frmGitTestsOptions: TfrmGitTestsOptions
       Height = 17
       Caption = 'Delete backup files after commit'
       TabOrder = 0
+    end
+    object cbAlternativeCommitLayout: TCheckBox
+      Left = 5
+      Top = 46
+      Width = 172
+      Height = 17
+      Caption = 'Alternative Commit Layout'
+      TabOrder = 1
     end
   end
   object OpenDialog1: TOpenDialog

@@ -70,7 +70,11 @@ begin
     IDEClient.Colors.Save;
     IDEClient.Options.AlternativeCommitLayout := FFrame.cbAlternativeCommitLayout.Checked;
     IDEClient.Options.DeleteBackupFilesAfterCommit := FFrame.cbDeleteBackupFilesAfterCommit.Checked;
+    IDEClient.Options.BlameOptions.IgnoreEOL := FFrame.IgnoreEOL.Checked;
+    IDEClient.Options.BlameOptions.IgnoreSpace := FFrame.IgnoreSpace.Checked;
+    IDEClient.Options.BlameOptions.IgnoreSpaceAll := FFrame.IgnoreAllSpace.Checked;
     IDEClient.Options.Save;
+    IDEClient.SettingsModified;
   end;
 end;
 
@@ -85,6 +89,14 @@ begin
   FFrame.cboxModified.Selected := IDEClient.Colors.Colors[ssckModified];
   FFrame.cbAlternativeCommitLayout.Checked := IDEClient.Options.AlternativeCommitLayout;
   FFrame.cbDeleteBackupFilesAfterCommit.Checked := IDEClient.Options.DeleteBackupFilesAfterCommit;
+  FFrame.IgnoreEOL.Checked := IDEClient.Options.BlameOptions.IgnoreEOL;
+  if IDEClient.Options.BlameOptions.IgnoreSpaceAll then
+    FFrame.IgnoreAllSpace.Checked := True
+  else
+  if IDEClient.Options.BlameOptions.IgnoreSpace then
+    FFrame.IgnoreSpace.Checked := True
+  else
+    FFrame.CompareSpace.Checked := True;
 end;
 
 function TSvnAddInOptions.GetArea: string;

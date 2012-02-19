@@ -2,7 +2,7 @@ object SvnOptionsFrame: TSvnOptionsFrame
   Left = 0
   Top = 0
   Width = 465
-  Height = 398
+  Height = 421
   TabOrder = 0
   object GroupBox1: TGroupBox
     Left = 8
@@ -122,6 +122,48 @@ object SvnOptionsFrame: TSvnOptionsFrame
       Height = 17
       Caption = 'Alternative Commit Layout'
       TabOrder = 1
+    end
+  end
+  object GroupBox5: TGroupBox
+    Left = 8
+    Top = 287
+    Width = 305
+    Height = 122
+    Caption = ' Blame : Diff options '
+    TabOrder = 2
+    object IgnoreEOL: TCheckBox
+      Left = 5
+      Top = 22
+      Width = 113
+      Height = 17
+      Caption = 'Ignore line &endings'
+      TabOrder = 0
+    end
+    object CompareSpace: TRadioButton
+      Left = 5
+      Top = 53
+      Width = 145
+      Height = 17
+      Caption = '&Compare whitespaces'
+      Checked = True
+      TabOrder = 1
+      TabStop = True
+    end
+    object IgnoreSpace: TRadioButton
+      Left = 5
+      Top = 76
+      Width = 161
+      Height = 17
+      Caption = 'Ignore whitespace c&hanges'
+      TabOrder = 2
+    end
+    object IgnoreAllSpace: TRadioButton
+      Left = 5
+      Top = 99
+      Width = 145
+      Height = 17
+      Caption = 'I&gnore all whitespaces'
+      TabOrder = 3
     end
   end
 end

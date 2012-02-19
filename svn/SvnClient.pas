@@ -502,6 +502,20 @@ type
     property HttpProxyUsername: TSvnConfigString read FHttpProxyUsername;
   end;
 
+  TSvnBlameOptions = class(TPersistent)
+  private
+    FIgnoreEOL: Boolean;
+    FIgnoreSpace: Boolean;
+    FIgnoreSpaceAll: Boolean;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+  public
+    constructor Create;
+    property IgnoreEOL: Boolean read FIgnoreEOL write FIgnoreEOL;
+    property IgnoreSpace: Boolean read FIgnoreSpace write FIgnoreSpace;
+    property IgnoreSpaceAll: Boolean read FIgnoreSpaceAll write FIgnoreSpaceAll;
+  end;
+
   TSvnItemArray = array of TSvnItem;
 
   TSSLServerTrustFailures = set of (sslCertNotYetValid, sslCertExpired, sslCertHostNameMismatch,
@@ -576,6 +590,7 @@ type
   private
     FAllocator: PAprAllocator;
     FAprLibLoaded: Boolean;
+    FBlameOptions: TSvnBlameOptions;
     FCancelled: Boolean;
     FChangeLists: TStrings;
     FCommitLogMessage: string;
@@ -699,6 +714,7 @@ type
       SvnCancelCallback: TSvnCancelCallback = nil; SubPool: PAprPool = nil);
 
     property Allocator: PAprAllocator read FAllocator;
+    property BlameOptions: TSvnBlameOptions read FBlameOptions;
     property ConfigDir: string read FConfigDir;
     property Ctx: PSvnClientCtx read FCtx;
     property Initialized: Boolean read GetInitialized;
@@ -1405,6 +1421,7 @@ begin
     SvnClient.OnSSLServerTrustPrompt := FItem.Owner.SvnClient.OnSSLServerTrustPrompt;
     SvnClient.OnSSLClientPasswordPrompt := FItem.Owner.SvnClient.OnSSLClientPasswordPrompt;
     SvnClient.OnSSLClientPasswordPrompt := FItem.Owner.SvnClient.OnSSLClientPasswordPrompt;
+    SvnClient.BlameOptions.Assign(FItem.Owner.SvnClient.BlameOptions);
     FItem.ReloadBlame(SvnClient, FItem.Owner.PathName, FItem.Owner.BaseRevision);
   finally
     SvnClient.Free;
@@ -3021,6 +3038,28 @@ begin
   SetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_EXCEPTIONS, FHttpProxyExceptions);
 end;
 
+{ TSvnBlameOptions }
+
+constructor TSvnBlameOptions.Create;
+begin
+  inherited Create;
+  FIgnoreEOL := False;
+  FIgnoreSpace := False;
+  FIgnoreSpaceAll := False;
+end;
+
+procedure TSvnBlameOptions.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TSvnBlameOptions then
+  begin
+    TSvnBlameOptions(Dest).IgnoreEOL := IgnoreEOL;
+    TSvnBlameOptions(Dest).IgnoreSpace := IgnoreSpace;
+    TSvnBlameOptions(Dest).IgnoreSpaceAll := IgnoreSpaceAll;
+  end
+  else
+    inherited AssignTo(Dest);
+end;
+
 type
   TSvnClientManager = class(TObject)
   private
@@ -3408,6 +3447,7 @@ begin
   FPassword := '';
   FLastCommitInfoRevision := SVN_INVALID_REVNUM;
   FServerConfig := TSvnServerConfig.Create;
+  FBlameOptions := TSvnBlameOptions.Create;
 end;
 
 procedure TSvnClient.SaveFileContentToStream(const PathName: string; Revision: TSvnRevNum;
@@ -3524,6 +3564,7 @@ end;
 
 destructor TSvnClient.Destroy;
 begin
+  FBlameOptions.Free;
   FServerConfig.Free;
   Finalize;
   inherited Destroy;
@@ -3580,6 +3621,7 @@ procedure TSvnClient.Blame(const PathName: string; Callback: TSvnBlameCallback; 
 var
   NewPool: Boolean;
   PegRev, StartRev, EndRev: TSvnOptRevision;
+  DiffOptions: TSvnDiffFileOptions;
 begin
   if not Initialized then
     Initialize;
@@ -3610,12 +3652,21 @@ begin
       PegRev.Kind := svnOptRevisionNumber;
       PegRev.Value.number := PegRevision;
     end;
+    if FBlameOptions.IgnoreSpaceAll then
+      DiffOptions.ignore_space := svnIgnoreSpaceAll
+    else
+    if FBlameOptions.IgnoreSpace then
+      DiffOptions.ignore_space := svnIgnoreSpaceChange
+    else
+      DiffOptions.ignore_space := svnIgnoreSpaceNone;
+    DiffOptions.ignore_eol_style := FBlameOptions.IgnoreEOL;
+    DiffOptions.show_c_function := False;
 
     FCancelled := False;
     FBlameCallback := Callback;
     FBlameSubPool := SubPool;
-    SvnCheck(svn_client_blame2(PAnsiChar(UTF8Encode(NativePathToSvnPath(PathName))), @PegRev, @StartRev, @EndRev, BlameReceiver, Self,
-      FCtx, SubPool));
+    SvnCheck(svn_client_blame3(PAnsiChar(UTF8Encode(NativePathToSvnPath(PathName))), @PegRev, @StartRev, @EndRev, @DiffOptions,
+      False, BlameReceiver, Self, FCtx, SubPool));
   finally
     FBlameSubPool := nil;
     FBlameCallback := nil;

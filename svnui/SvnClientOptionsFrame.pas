@@ -47,6 +47,11 @@ type
     GroupBox2: TGroupBox;
     cbDeleteBackupFilesAfterCommit: TCheckBox;
     cbAlternativeCommitLayout: TCheckBox;
+    GroupBox5: TGroupBox;
+    IgnoreEOL: TCheckBox;
+    CompareSpace: TRadioButton;
+    IgnoreSpace: TRadioButton;
+    IgnoreAllSpace: TRadioButton;
   private
     { Private declarations }
   public

@@ -311,6 +311,7 @@ begin
     if not HandleSvnException(ExceptObject) then
       raise;
   end;
+  FlushFileState(FileName);
 end;
 
 function TCommit.AddToChangeListCallBack(const FileName, AChangeList: string): Boolean;
@@ -700,6 +701,7 @@ begin
     if not HandleSvnException(ExceptObject) then
       raise;
   end;
+  FlushFileState(FileName);
 end;
 
 function TCommit.RevertCallBack(const FileName: string; ARecursive: Boolean; var ANewTextStatus: TSvnWCStatusKind): Boolean;
@@ -732,6 +734,7 @@ begin
   Module := (BorlandIDEServices as IOTAModuleServices).FindModule(FileName);
   if Module <> nil then
     Module.Refresh(True);
+  FlushFileState(FileName);
 end;
 
 procedure TCommit.SelectView;

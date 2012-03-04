@@ -30,6 +30,7 @@ uses
   Classes;
 
 procedure FlushFileListFileStates(AFileList: TStringList);
+procedure FlushFileState(const AFileName: string);
 procedure RegisterFileStateProvider;
 procedure UnregisterFileStateProvider;
 
@@ -775,6 +776,19 @@ begin
     (BorlandIDEServices as IOTAProVersionControlServices).InvalidateControls;
 end;
 
+procedure FlushFileState(const AFileName: string);
+var
+  SL: TStringList;
+begin
+  SL := TStringList.Create;
+  try
+    SL.Add(AFileName);
+    FlushFileListFileStates(SL);
+  finally
+    SL.Free;
+  end;
+end;
+
 procedure RegisterFileStateProvider;
 begin
   if Supports(BorlandIDEServices, IOTAProVersionControlServices) then
@@ -793,6 +807,11 @@ end;
 
 {$ELSE ~TOOLSPROAPI}
 procedure FlushFileListFileStates(AFileList: TStringList);
+begin
+//
+end;
+
+procedure FlushFileState(const AFileName: string);
 begin
 //
 end;

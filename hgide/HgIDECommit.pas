@@ -302,6 +302,7 @@ end;
 function TCommit.AddCallBack(const FileName: string): Boolean;
 begin
   Result := FSvnClient.Add(FileName);
+  FlushFileState(FileName);
 end;
 
 function TCommit.CloneEditorView: INTACustomEditorView;
@@ -684,6 +685,7 @@ begin
   Module := (BorlandIDEServices as IOTAModuleServices).FindModule(FileName);
   if Module <> nil then
     Module.Refresh(True);
+  FlushFileState(FileName);
 end;
 
 procedure TCommit.SelectView;

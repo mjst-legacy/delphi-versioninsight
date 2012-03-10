@@ -56,7 +56,8 @@ contains
   HgClientCheckout in 'HgClientCheckout.pas' {HgCheckoutDialog},
   HgClientProjectSelect in 'HgClientProjectSelect.pas' {HgProjectSelectDialog},
   HgClientUpdate in 'HgClientUpdate.pas' {HgUpdateDialog},
-  HgIDEColors in 'HgIDEColors.pas';
+  HgIDEColors in 'HgIDEColors.pas',
+  HgIDERevert in 'HgIDERevert.pas';
 
 end.
 

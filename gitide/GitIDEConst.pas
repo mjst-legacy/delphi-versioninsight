@@ -34,6 +34,7 @@ resourcestring
   sPMMRootDir = 'From Repository Root';
   sPMMProjectDir = 'From Project Directory';
   sPMMExpicitFiles = 'Files in this Project';
+  sPMMRevert = 'Revert';
   sMenuOpenFromVersionControl = 'Open From Git (Clone)';
 
   sCommit = 'Commit';
@@ -46,6 +47,7 @@ resourcestring
   SComment = 'Comment: ';
 
   sCommitLoaded = 'A commit window is still open. Please close it if you wish to start a new commit.';
+  sRevertedFile = 'Reverted: %s';
   sRetrievingFileRevision = 'Retrieving %s revision %s';
   sSavingFileRevision = 'Saving %s revision %s';
 

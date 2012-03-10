@@ -76,6 +76,7 @@ const
   pmmpFileCommitSvnMenu = pmmpUserVersionControl + 1010;
   pmmpFileUpdateSvnMenu = pmmpUserVersionControl + 1020;
   pmmpFileRepoSvnMenu = pmmpUserVersionControl + 1030;
+  pmmpFileRevertSvnMenu = pmmpUserVersionControl + 1040;
 
 
 type
@@ -143,7 +144,8 @@ function RootDirectory(const SvnClient: TSvnClient; const Path: string): string;
 implementation
 
 uses SysUtils, SvnIDEConst, SvnIDECommit, SvnIDEUpdate, SvnIDEClean, SvnIDELog,
-  SvnIDEImport, SvnIDECheckout, SvnIDERepoBrowser, SvnIDEIcons, SvnIDEMerge;
+  SvnIDEImport, SvnIDECheckout, SvnIDERepoBrowser, SvnIDEIcons, SvnIDEMerge,
+  SvnIDERevert;
 
 const
   sSubversionName = 'embarcadero.subversion';
@@ -201,7 +203,8 @@ var
   PMMParentCleanSvnMenu, PMMRootDirCleanSvnMenu, PMMProjectDirCleanSvnMenu,
   PMMParentLogSvnMenu, PMMRootDirLogSvnMenu, PMMProjectDirLogSvnMenu,
   PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu,
-  PMMParentMergeSvnMenu, PMMRootDirMergeSvnMenu, PMMProjectDirMergeSvnMenu: IOTAProjectManagerMenu;
+  PMMParentMergeSvnMenu, PMMRootDirMergeSvnMenu, PMMProjectDirMergeSvnMenu,
+  PMMFileRevert: IOTAProjectManagerMenu;
 
   FBMMSvnParent, FBMMCommit, FBMMUpdate, FBMMLog, FBMMClean, FBMMRepo, FBMMMerge: IOTAProjectManagerMenu;
 
@@ -646,6 +649,7 @@ begin
     ProjectManagerMenuList.Add(PMMFileCommit);
     ProjectManagerMenuList.Add(PMMFileUpdate);
     ProjectManagerMenuList.Add(PMMFileRepoSvnMenu);
+    ProjectManagerMenuList.Add(PMMFileRevert);
   end;
 end;
 
@@ -679,6 +683,7 @@ begin
   PMMParentMergeSvnMenu := TParentMergeSvnMenu.Create;
   PMMRootDirMergeSvnMenu := TRootDirMergeSvnMenu.Create(ASvnIDEClient);
   PMMProjectDirMergeSvnMenu := TProjectDirMergeSvnMenu.Create(ASvnIDEClient);
+  PMMFileRevert := TFileRevertSvnMenu.Create(ASvnIDEClient);
 
   FBMMSvnParent := TParentSvnMenu.Create;
   FBMMCommit := TDirCommitSvnMenu.Create(ASvnIDEClient);
@@ -716,6 +721,7 @@ begin
   PMMParentMergeSvnMenu := nil;
   PMMRootDirMergeSvnMenu := nil;
   PMMProjectDirMergeSvnMenu := nil;
+  PMMFileRevert := nil;
 
   FBMMSvnParent := nil;
   FBMMCommit := nil;

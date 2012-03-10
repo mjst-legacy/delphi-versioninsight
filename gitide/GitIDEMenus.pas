@@ -72,6 +72,7 @@ const
   pmmpFileCommitSvnMenu = pmmpUserVersionControl + 1010;
   pmmpFileUpdateSvnMenu = pmmpUserVersionControl + 1020;
   pmmpFileRepoSvnMenu = pmmpUserVersionControl + 1030;
+  pmmpFileRevertSvnMenu = pmmpUserVersionControl + 1040;
 
 
 type
@@ -139,7 +140,8 @@ function RootDirectory(const GitClient: TGitClient; const Path: string): string;
 implementation
 
 uses
-  SysUtils, Dialogs, GitIDEConst, GitIDECommit, GitIDELog, GitIDECheckout, GitIDEIcons;
+  SysUtils, Dialogs, GitIDEConst, GitIDECommit, GitIDELog, GitIDECheckout, GitIDEIcons,
+  GitIDERevert;
 
 const
   sGitName = 'versioninsight.git';
@@ -193,7 +195,8 @@ var
   PMMProjectDirUpdate, PMMExpicitFilesUpdate, PMMFileUpdate,
   PMMParentCleanSvnMenu, PMMRootDirCleanSvnMenu, PMMProjectDirCleanSvnMenu,
   PMMParentLogGitMenu, PMMRootDirLogGitMenu, PMMProjectDirLogGitMenu,
-  PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu: IOTAProjectManagerMenu;
+  PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu,
+  PMMFileRevert: IOTAProjectManagerMenu;
 
   FBMMSvnParent, FBMMCommit, FBMMLog: IOTAProjectManagerMenu;
 
@@ -635,6 +638,7 @@ begin
     ProjectManagerMenuList.Add(PMMFileCommit);
     ProjectManagerMenuList.Add(PMMFileUpdate);
     ProjectManagerMenuList.Add(PMMFileRepoSvnMenu);
+    ProjectManagerMenuList.Add(PMMFileRevert);
   end;
 end;
 
@@ -669,6 +673,7 @@ begin
   PMMProjectDirRepo := TProjectDirRepoSvnMenu.Create(ASvnIDEClient);
   PMMFileRepoSvnMenu := TFileRepoSvnMenu.Create(ASvnIDEClient);
   }
+  PMMFileRevert := TFileRevertGitMenu.Create(AGitIDEClient);
 
   FBMMSvnParent := TParentGitMenu.Create;
   FBMMCommit := TDirCommitGitMenu.Create(AGitIDEClient);
@@ -699,6 +704,7 @@ begin
   PMMRootDirRepo := nil;
   PMMProjectDirRepo := nil;
   PMMFileRepoSvnMenu := nil;
+  PMMFileRevert := nil;
 
   FBMMSvnParent := nil;
   FBMMCommit := nil;

@@ -95,6 +95,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    procedure Clear;
     procedure DeleteDirectory(const ADirectory: string);
     procedure DeleteFile(const FileName: string);
     function GetDirectory(const ADirectory: string): TSvnStateDir;
@@ -114,6 +115,7 @@ type
     procedure HandleState(const AFileName: string; AVersioned: Boolean; ATextStatus: THgStatus; AProperties: TStringList);
   protected
     procedure AfterCompile;
+    procedure AfterCloseAll;
     procedure BeforeCOmpile;
     procedure FlushDir(const ADirectory: string);
     procedure FlushFile(const FileName: string);
@@ -329,6 +331,11 @@ begin
   FItems := TObjectDictionary<string, TSvnStateDir>.Create([doOwnsValues]);
 end;
 
+procedure TSvnStateDirList.Clear;
+begin
+  FItems.Clear;
+end;
+
 procedure TSvnStateDirList.DeleteDirectory(const ADirectory: string);
 begin
   FItems.Remove(AnsiLowerCase(ADirectory));
@@ -391,6 +398,19 @@ begin
   end;
   FThread.Free;
   inherited Destroy;
+end;
+
+procedure TIOTAProVersionControlFileStateProvider.AfterCloseAll;
+begin
+  if IDEClient.Options.ClearFileStatesAfterCloseAll then
+  begin
+    FLock.Enter;
+    try
+      FItems.Clear;
+    finally
+      FLock.Leave;
+    end;
+  end;
 end;
 
 procedure TIOTAProVersionControlFileStateProvider.AfterCompile;

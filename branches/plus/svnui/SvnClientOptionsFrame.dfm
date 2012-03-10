@@ -2,7 +2,7 @@ object SvnOptionsFrame: TSvnOptionsFrame
   Left = 0
   Top = 0
   Width = 465
-  Height = 421
+  Height = 445
   TabOrder = 0
   object GroupBox1: TGroupBox
     Left = 8
@@ -104,7 +104,7 @@ object SvnOptionsFrame: TSvnOptionsFrame
     Left = 8
     Top = 207
     Width = 305
-    Height = 74
+    Height = 98
     Caption = ' Options '
     TabOrder = 1
     object cbDeleteBackupFilesAfterCommit: TCheckBox
@@ -123,10 +123,18 @@ object SvnOptionsFrame: TSvnOptionsFrame
       Caption = 'Alternative Commit Layout'
       TabOrder = 1
     end
+    object cbClearFileStatesAfterCloseAll: TCheckBox
+      Left = 5
+      Top = 70
+      Width = 172
+      Height = 17
+      Caption = 'Clear file states after Close All'
+      TabOrder = 2
+    end
   end
   object GroupBox5: TGroupBox
     Left = 8
-    Top = 287
+    Top = 311
     Width = 305
     Height = 122
     Caption = ' Blame : Diff options '

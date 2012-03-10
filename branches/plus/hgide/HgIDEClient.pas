@@ -33,12 +33,14 @@ type
   THgOptions = class(TObject)
   private
     FAlternativeCommitLayout: Boolean;
+    FClearFileStatesAfterCloseAll: Boolean;
     FDeleteBackupFilesAfterCommit: Boolean;
   public
     constructor Create;
     procedure Load;
     procedure Save;
     property AlternativeCommitLayout: Boolean read FAlternativeCommitLayout write FAlternativeCommitLayout;
+    property ClearFileStatesAfterCloseAll: Boolean read FClearFileStatesAfterCloseAll write FClearFileStatesAfterCloseAll;
     property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
   end;
 
@@ -82,6 +84,7 @@ const
   MaxSourceRepoHistory = 20;
   cOptions = 'Options';
   cAlternativeCommitLayout = 'AlternativeCommitLayout';
+  cClearFileStatesAfterCloseAll = 'ClearFileStatesAfterCloseAll';
   cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
 
 procedure Register;
@@ -99,6 +102,7 @@ constructor THgOptions.Create;
 begin
   inherited Create;
   FAlternativeCommitLayout := False;
+  FClearFileStatesAfterCloseAll := False;
   FDeleteBackupFilesAfterCommit := False;
   Load;
 end;
@@ -117,6 +121,9 @@ begin
     Key := cAlternativeCommitLayout;
     if Reg.ValueExists(Key) then
       FAlternativeCommitLayout := Reg.ReadBool(Key);
+    Key := cClearFileStatesAfterCloseAll;
+    if Reg.ValueExists(Key) then
+      FClearFileStatesAfterCloseAll := Reg.ReadBool(Key);
     Key := cDeleteBackupFilesAfterCommit;
     if Reg.ValueExists(Key) then
       FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
@@ -135,6 +142,7 @@ begin
     BaseKey := BaseRegKey + cOptions;
     Reg.OpenKey(BaseKey, True);
     Reg.WriteBool(cAlternativeCommitLayout, FAlternativeCommitLayout);
+    Reg.WriteBool(cClearFileStatesAfterCloseAll, FClearFileStatesAfterCloseAll);
     Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
   finally
     Reg.Free;

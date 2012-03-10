@@ -6,3 +6,4 @@ tsvn_menulog ICON menulog.ico
 tsvn_menurepobrowse ICON menurepobrowse.ico
 tsvn_menuupdate ICON menuupdate.ico
 tsvn_menumerge ICON menumerge.ico
+tsvn_menurevert ICON menurevert.ico

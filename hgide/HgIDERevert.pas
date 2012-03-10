@@ -33,6 +33,7 @@ type
   protected
     FSvnIDEClient: THgIDEClient;
     procedure Execute(const MenuContextList: IInterfaceList); override;
+    function GetImageIndex: Integer; override;
   public
     constructor Create(ASvnIDEClient: THgIDEClient);
   end;
@@ -40,7 +41,7 @@ type
 implementation
 
 uses SysUtils, Controls, Dialogs, ToolsAPI, HgIDEConst, HgIDEMessageView,
-  HgUIConst;
+  HgIDEFileStates, HgUIConst, HgIDEIcons;
 
 const
   sPMVRevert = 'Revert';
@@ -100,11 +101,17 @@ begin
           if Module <> nil then
             Module.Refresh(True);
         end;
+        FlushFileListFileStates(FileList);
       end;
     end;
   finally
     FileList.Free;
   end;
+end;
+
+function TFileRevertHgMenu.GetImageIndex: Integer;
+begin
+  Result := RevertImageIndex;
 end;
 
 end.

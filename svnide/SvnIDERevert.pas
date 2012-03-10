@@ -33,6 +33,7 @@ type
   protected
     FSvnIDEClient: TSvnIDEClient;
     procedure Execute(const MenuContextList: IInterfaceList); override;
+    function GetImageIndex: Integer; override;
   public
     constructor Create(ASvnIDEClient: TSvnIDEClient);
   end;
@@ -40,7 +41,7 @@ type
 implementation
 
 uses SysUtils, Controls, Dialogs, ToolsAPI, SvnIDEConst, SvnIDEMessageView,
-  SvnUIConst;
+  SvnIDEFileStates, SvnUIConst, SvnIDEIcons;
 
 const
   sPMVRevert = 'Revert';
@@ -104,11 +105,17 @@ begin
           if Module <> nil then
             Module.Refresh(True);
         end;
+        FlushFileListFileStates(FileList);
       end;
     end;
   finally
     FileList.Free;
   end;
+end;
+
+function TFileRevertSvnMenu.GetImageIndex: Integer;
+begin
+  Result := RevertImageIndex;
 end;
 
 end.

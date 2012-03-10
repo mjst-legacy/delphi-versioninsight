@@ -31,6 +31,7 @@ var
   MercurialImageIndex: Integer = -1;
   CommitImageIndex: Integer = -1;
   LogImageIndex: Integer = -1;
+  RevertImageIndex: Integer = -1;
 
   //Message View
   MercurialMessageViewImageIndex: Integer = -1;
@@ -63,6 +64,7 @@ begin
   MercurialImageIndex := RegisterMenuIconFromModuleResourceID(GetMercurialIconBinName, 'mercurial_menuicon', 0);
   CommitImageIndex := RegisterMenuIcon('tsvn_menucommit');
   LogImageIndex := RegisterMenuIcon('tsvn_menulog');
+  RevertImageIndex := RegisterMenuIcon('tsvn_menurevert');
 
   //MercurialMessageViewImageIndex := RegisterMessageViewIcon('mercurial_menuicon');
   MercurialMessageViewImageIndex := RegisterMessageViewIconFromModuleResourceID(GetMercurialIconBinName, 'mercurial_menuicon', 0);

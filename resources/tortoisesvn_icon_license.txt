@@ -6,6 +6,7 @@ menuimport.ico
 menulog.ico
 menumerge.ico
 menurepobrowse.ico
+menurevert.ico
 menuupdate.ico
 
 ====================================================================

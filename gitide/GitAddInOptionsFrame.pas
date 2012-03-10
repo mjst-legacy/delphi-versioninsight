@@ -52,6 +52,7 @@ type
     GroupBox3: TGroupBox;
     cbDeleteBackupFilesAfterCommit: TCheckBox;
     cbAlternativeCommitLayout: TCheckBox;
+    cbClearFileStatesAfterCloseAll: TCheckBox;
     procedure SpeedButton1Click(Sender: TObject);
   private
     { Private declarations }

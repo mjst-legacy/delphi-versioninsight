@@ -47,6 +47,7 @@ type
   private
     FAlternativeCommitLayout: Boolean;
     FBlameOptions: TSvnBlameOptions;
+    FClearFileStatesAfterCloseAll: Boolean;
     FDeleteBackupFilesAfterCommit: Boolean;
   public
     constructor Create;
@@ -55,6 +56,7 @@ type
     procedure Save;
     property AlternativeCommitLayout: Boolean read FAlternativeCommitLayout write FAlternativeCommitLayout;
     property BlameOptions: TSvnBlameOptions read FBlameOptions;
+    property ClearFileStatesAfterCloseAll: Boolean read FClearFileStatesAfterCloseAll write FClearFileStatesAfterCloseAll;
     property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
   end;
 
@@ -124,6 +126,7 @@ const
  MaxURLHistory = 20;
  cOptions = 'Options';
  cAlternativeCommitLayout = 'AlternativeCommitLayout';
+ cClearFileStatesAfterCloseAll = 'ClearFileStatesAfterCloseAll';
  cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
  cBlameIgnoreEOL = 'BlameIgnoreEOL';
  cBlameCompareSpaces = 'BlameCompareSpaces';
@@ -184,6 +187,7 @@ begin
   inherited Create;
   FAlternativeCommitLayout := False;
   FBlameOptions := TSvnBlameOptions.Create;
+  FClearFileStatesAfterCloseAll := False;
   FDeleteBackupFilesAfterCommit := False;
   Load;
 end;
@@ -209,6 +213,9 @@ begin
     Key := cAlternativeCommitLayout;
     if Reg.ValueExists(Key) then
       FAlternativeCommitLayout := Reg.ReadBool(Key);
+    Key := cClearFileStatesAfterCloseAll;
+    if Reg.ValueExists(Key) then
+      FClearFileStatesAfterCloseAll := Reg.ReadBool(Key);
     Key := cDeleteBackupFilesAfterCommit;
     if Reg.ValueExists(Key) then
       FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
@@ -239,6 +246,7 @@ begin
     BaseKey := BaseRegKey + cOptions;
     Reg.OpenKey(BaseKey, True);
     Reg.WriteBool(cAlternativeCommitLayout, FAlternativeCommitLayout);
+    Reg.WriteBool(cClearFileStatesAfterCloseAll, FClearFileStatesAfterCloseAll);
     Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
 
     Reg.WriteBool(cBlameIgnoreEOL, FBlameOptions.IgnoreEOL);

@@ -69,6 +69,7 @@ begin
     IDEClient.Colors.Colors := Colors;
     IDEClient.Colors.Save;
     IDEClient.Options.AlternativeCommitLayout := FFrame.cbAlternativeCommitLayout.Checked;
+    IDEClient.Options.ClearFileStatesAfterCloseAll := FFrame.cbClearFileStatesAfterCloseAll.Checked;
     IDEClient.Options.DeleteBackupFilesAfterCommit := FFrame.cbDeleteBackupFilesAfterCommit.Checked;
     IDEClient.Options.BlameOptions.IgnoreEOL := FFrame.IgnoreEOL.Checked;
     IDEClient.Options.BlameOptions.IgnoreSpace := FFrame.IgnoreSpace.Checked;
@@ -88,6 +89,10 @@ begin
   FFrame.cboxMerged.Selected := IDEClient.Colors.Colors[ssckMerged];
   FFrame.cboxModified.Selected := IDEClient.Colors.Colors[ssckModified];
   FFrame.cbAlternativeCommitLayout.Checked := IDEClient.Options.AlternativeCommitLayout;
+  {$IFNDEF TOOLSPROAPI}
+  FFrame.cbClearFileStatesAfterCloseAll.Visible := False;
+  {$ENDIF ~TOOLSPROAPI}
+  FFrame.cbClearFileStatesAfterCloseAll.Checked := IDEClient.Options.ClearFileStatesAfterCloseAll;
   FFrame.cbDeleteBackupFilesAfterCommit.Checked := IDEClient.Options.DeleteBackupFilesAfterCommit;
   FFrame.IgnoreEOL.Checked := IDEClient.Options.BlameOptions.IgnoreEOL;
   if IDEClient.Options.BlameOptions.IgnoreSpaceAll then

@@ -52,6 +52,7 @@ type
     CompareSpace: TRadioButton;
     IgnoreSpace: TRadioButton;
     IgnoreAllSpace: TRadioButton;
+    cbClearFileStatesAfterCloseAll: TCheckBox;
   private
     { Private declarations }
   public

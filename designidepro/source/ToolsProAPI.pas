@@ -98,10 +98,15 @@ type
   TOTAProFileStateResult = (fsrOK, fsrError, fsrDeferred);
 
   IOTAProVersionControlFileStateProvider = interface(IInterface)
-  ['{675E2793-7051-418B-8663-EA492596E758}']
+  ['{E13971C2-E80E-4B7C-9CFF-753A46F37D14}']
     { This procedure is called after a compile.  The file state provider can now
       perform again any actions. }
     procedure AfterCompile;
+    { This procedure is called after the user selected "File | Close All", the
+      method IOTAModuleServices.CloseAll was called or implicitly when actions
+      like creating a new project or opening an existing project do call Close All
+      before.  The file state provider could delete all cached states here }
+    procedure AfterCloseAll;
     { This procedure is called before a compile.  The file state provider now
       should stop any actions to avoid any bad interactions during compilation. }
     procedure BeforeCompile;

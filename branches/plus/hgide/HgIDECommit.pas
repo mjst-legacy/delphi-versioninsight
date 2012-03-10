@@ -674,7 +674,7 @@ var
 begin
   Result := FSvnClient.Revert(FileName);
   if Result then
-    SvnMessageView.WriteMessage(FileName, Format('Reverted: %s', [FileName]));//str
+    SvnMessageView.WriteMessage(FileName, Format(sRevertedFile, [FileName]));
   SvnItem := THgItem.Create(FSvnClient, FileName);
   try
     SvnItem.LoadStatus;

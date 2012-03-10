@@ -56,7 +56,8 @@ contains
   GitClientLog in 'GitClientLog.pas' {GitLogFrame: TFrame},
   GitIDETypes in 'GitIDETypes.pas',
   GitClientProgress in 'GitClientProgress.pas' {GitProgressDialog},
-  GitIDEColors in 'GitIDEColors.pas';
+  GitIDEColors in 'GitIDEColors.pas',
+  GitIDERevert in 'GitIDERevert.pas';
 
 end.
 

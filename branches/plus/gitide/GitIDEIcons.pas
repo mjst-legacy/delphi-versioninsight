@@ -31,6 +31,7 @@ var
   GitImageIndex: Integer = -1;
   CommitImageIndex: Integer = -1;
   LogImageIndex: Integer = -1;
+  RevertImageIndex: Integer = -1;
 
   //Message View
   GitMessageViewImageIndex: Integer = -1;
@@ -85,6 +86,7 @@ begin
 
   CommitImageIndex := RegisterMenuIcon('tsvn_menucommit');
   LogImageIndex := RegisterMenuIcon('tsvn_menulog');
+  RevertImageIndex := RegisterMenuIcon('tsvn_menurevert');
 
   if GitIconFileName <> '' then
   begin

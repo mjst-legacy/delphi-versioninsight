@@ -33,6 +33,7 @@ type
   protected
     FSvnIDEClient: TGitIDEClient;
     procedure Execute(const MenuContextList: IInterfaceList); override;
+    function GetImageIndex: Integer; override;
   public
     constructor Create(ASvnIDEClient: TGitIDEClient);
   end;
@@ -40,7 +41,7 @@ type
 implementation
 
 uses SysUtils, Controls, Dialogs, ToolsAPI, GitIDEConst, GitIDEMessageView,
-  GitUIConst;
+  GitIDEFileStates, GitUIConst, GitIDEIcons;
 
 const
   sPMVRevert = 'Revert';
@@ -100,11 +101,17 @@ begin
           if Module <> nil then
             Module.Refresh(True);
         end;
+        FlushFileListFileStates(FileList);
       end;
     end;
   finally
     FileList.Free;
   end;
+end;
+
+function TFileRevertGitMenu.GetImageIndex: Integer;
+begin
+  Result := RevertImageIndex;
 end;
 
 end.

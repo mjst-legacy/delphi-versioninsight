@@ -150,11 +150,13 @@ type
     FRefreshCallBack: TRefreshCallBack;
     FExecutingCheckAllClick: Boolean;
     FExecutingRefresh: Boolean;
+    FExecutingSelectedCheck: Boolean;
     FExecutingUnversionedParentCheck: Boolean;
     FItemList: TList<TSvnListViewItem>;
     FIndexList: TList<Integer>;
     FRefreshItemList: TObjectList<TSvnListViewItem>;
     FRemoveFromChangeListCallBack: TRemoveFromChangeListCallBack;
+    FSetAutoSizeColumnWidth: Boolean;
     FSortColumns: array of Integer;
     FSortOrder: Boolean;
     FRecentComments: TStringList;
@@ -162,6 +164,7 @@ type
     FNoFiles: Boolean;
     FChangesLists: TStringList;
     FChangesListIgnoreOnCommitGroupID: Integer;
+    FUpdateCount: Integer;
     procedure CMRelease(var Message: TMessage); message CM_RELEASE;
     procedure DoRefresh;
     function GetGroupID(const AChangeList: string): Integer;
@@ -401,8 +404,17 @@ begin
 end;
 
 procedure TSvnCommitFrame.BeginUpdate;
+var
+  I: Integer;
 begin
   Files.Items.BeginUpdate;
+  if FUpdateCount = 0 then
+  begin
+    FSetAutoSizeColumnWidth := False;
+    for I := 0 to Files.Columns.Count - 1 do
+      Files.Columns.Items[I].Width := Files.StringWidth(Files.Columns[I].Caption) + 14;
+  end;
+  Inc(FUpdateCount);
 end;
 
 procedure TSvnCommitFrame.CheckAllClick(Sender: TObject);
@@ -569,11 +581,14 @@ begin
   FRecentComments := TStringList.Create;
   FExecutingCheckAllClick := False;
   FExecutingRefresh := False;
+  FExecutingSelectedCheck := False;
   FExecutingUnversionedParentCheck := False;
   FChangesLists := TStringList.Create;
   FChangesLists.Sorted := True;
   FChangesListIgnoreOnCommitGroupID := -1;
   FNoFiles := False;
+  FSetAutoSizeColumnWidth := False;
+  FUpdateCount := 0;
 end;
 
 destructor TSvnCommitFrame.Destroy;
@@ -722,8 +737,21 @@ begin
 end;
 
 procedure TSvnCommitFrame.EndUpdate;
+var
+  I: Integer;
 begin
   Files.CustomSort(@ColumnSort, LPARAM(Self));
+  Dec(FUpdateCount);
+  if FUpdateCount <= 0 then
+  begin
+    FUpdateCount := 0;
+    if FSetAutoSizeColumnWidth then
+    begin
+      for I := 0 to Files.Columns.Count - 1 do
+        Files.Columns.Items[I].Width := -1;
+      FSetAutoSizeColumnWidth := False;
+    end;
+  end;
   Files.Items.EndUpdate;
 end;
 
@@ -876,7 +904,8 @@ procedure TSvnCommitFrame.FilesItemChecked(Sender: TObject; Item: TListItem);
   end;
 
 var
-  I: Integer;
+  I, StartIdx: Integer;
+  Checked: Boolean;
 begin
   if Item.Data <> nil then
     FItemList[FIndexList[Integer(Item.Data) - 1]].Checked := Item.Checked;
@@ -892,8 +921,23 @@ begin
         FExecutingUnversionedParentCheck := False;
       end;
     end;
+    //when a selected item is checked/unchecked then check/uncheck all other selected items
+    if not FExecutingSelectedCheck and (Files.SelCount > 1) and Item.Selected then
+    begin
+      FExecutingSelectedCheck := True;
+      try
+        Checked := Item.Checked;
+        StartIdx := Files.Selected.Index;
+        for I := StartIdx to Files.Items.Count - 1 do
+          if Files.Items[I].Selected and (Files.Items[I] <> Item) then
+            Files.Items[I].Checked := Checked;
+      finally
+        FExecutingSelectedCheck := False;
+      end;
+    end;
+    Checked := GetNormalizedCheckState(Item);
     for I := 0 to Files.Items.Count - 1 do
-      if GetNormalizedCheckState(Files.Items[I]) <> GetNormalizedCheckState(Item) then
+      if GetNormalizedCheckState(Files.Items[I]) <> Checked then
       begin
         CheckAll.State := cbGrayed;
         UpdateCommitButton;
@@ -1261,7 +1305,7 @@ begin
   Cursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
   try
-    Files.Items.BeginUpdate;
+    BeginUpdate;
     try
       FNoFiles := False;
       Files.Clear;
@@ -1280,7 +1324,7 @@ begin
           Files.Columns.Items[I].Width := -2;
       end;
     finally
-      Files.Items.EndUpdate;
+      EndUpdate;
     end;
     UpdateCountLabel;
   finally
@@ -1680,8 +1724,11 @@ begin
     ListItem.ImageIndex := SvnImageModule.GetShellImageIndex(SvnListItem.PathName);
     if FirstAdded then
     begin
-      for I := 0 to Files.Columns.Count - 1 do
-        Files.Columns.Items[I].Width := -1;
+      if FUpdateCount > 0 then
+        FSetAutoSizeColumnWidth := True
+      else
+        for I := 0 to Files.Columns.Count - 1 do
+          Files.Columns.Items[I].Width := -1;
       FNoFiles := False;
     end;
   end;

@@ -377,23 +377,26 @@ begin
       else
         ChangeList := FChangesLists[TMenuItem(Sender).Tag];
     end;
-    ModifiedChangeLists := False;
-    StartIdx := Files.Selected.Index;
-    for I := StartIdx to Files.Items.Count - 1 do
-      if Files.Items[I].Selected then
-      begin
-        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
-        if not (SvnListViewItem.Directory or (SvnListViewItem.TextStatus in [svnWcStatusNone, svnWcStatusUnversioned])) then
-          if FAddToChangeListCallBack(SvnListViewItem.PathName, ChangeList) then
-          begin
-            SvnListViewItem.FChangeList := ChangeList;
-            if ChangeList = cIgnoreOnCommitChangeList then
-              SvnListViewItem.Checked := False;
-            ModifiedChangeLists := True;
-          end;
-      end;
-    if ModifiedChangeLists then
-      RebuildList;
+    if ChangeList <> '' then
+    begin
+      ModifiedChangeLists := False;
+      StartIdx := Files.Selected.Index;
+      for I := StartIdx to Files.Items.Count - 1 do
+        if Files.Items[I].Selected then
+        begin
+          SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+          if not (SvnListViewItem.Directory or (SvnListViewItem.TextStatus in [svnWcStatusNone, svnWcStatusUnversioned])) then
+            if FAddToChangeListCallBack(SvnListViewItem.PathName, ChangeList) then
+            begin
+              SvnListViewItem.FChangeList := ChangeList;
+              if ChangeList = cIgnoreOnCommitChangeList then
+                SvnListViewItem.Checked := False;
+              ModifiedChangeLists := True;
+            end;
+        end;
+      if ModifiedChangeLists then
+        RebuildList;
+    end;
   end;
 end;
 

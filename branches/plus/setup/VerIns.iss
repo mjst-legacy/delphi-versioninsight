@@ -3,7 +3,7 @@
 ; HEADER
 ; -----------------------------------------------------------------------------
 
-#define BUILDNO  'Beta7_1'
+#define BUILDNO  'Beta8'
 
 OutputBaseFilename=.\VerInsPlus{#BUILDNO}
 AppName=Version Insight Plus

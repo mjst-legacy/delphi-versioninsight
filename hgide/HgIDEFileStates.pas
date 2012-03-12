@@ -31,6 +31,7 @@ uses
 
 procedure FlushFileListFileStates(AFileList: TStringList);
 procedure FlushFileState(const AFileName: string);
+function GetFileStateProvider: IInterface;
 procedure RegisterFileStateProvider;
 procedure UnregisterFileStateProvider;
 
@@ -847,6 +848,11 @@ begin
   end;
 end;
 
+function GetFileStateProvider: IInterface;
+begin
+  Result := TIOTAProVersionControlFileStateProvider.FSingleton;
+end;
+
 procedure RegisterFileStateProvider;
 begin
   if Supports(BorlandIDEServices, IOTAProVersionControlServices) then
@@ -872,6 +878,11 @@ end;
 procedure FlushFileState(const AFileName: string);
 begin
 //
+end;
+
+function GetFileStateProvider: IInterface;
+begin
+  Result := nil;
 end;
 
 procedure RegisterFileStateProvider;

@@ -143,7 +143,11 @@ function RootDirectory(const SvnClient: TSvnClient; const Path: string): string;
 
 implementation
 
-uses SysUtils, SvnIDEConst, SvnIDECommit, SvnIDEUpdate, SvnIDEClean, SvnIDELog,
+uses
+  {$IFDEF TOOLSPROAPI}
+  SvnIDEFileStates,
+  {$ENDIF TOOLSPROAPI}
+  SysUtils, SvnIDEConst, SvnIDECommit, SvnIDEUpdate, SvnIDEClean, SvnIDELog,
   SvnIDEImport, SvnIDECheckout, SvnIDERepoBrowser, SvnIDEIcons, SvnIDEMerge,
   SvnIDERevert;
 
@@ -155,7 +159,7 @@ type
     const MenuContextList: IInterfaceList);
 
   TSvnNotifier = class(TInterfacedObject, IOTAVersionControlNotifier,
-    IOTAVersionControlNotifier150 {$IFDEF TOOLSPROAPI}, IOTAProVersionControlNotifier155{$ENDIF})
+    IOTAVersionControlNotifier150 {$IFDEF TOOLSPROAPI}, IOTAProVersionControlNotifier155, IOTAProVersionControlSearchFileFind{$ENDIF})
     { IOTANotifier }
     procedure AfterSave;
     procedure BeforeSave;
@@ -179,6 +183,10 @@ type
     function GetCheckoutMenuCaption: string;
     function GetAddNewProjectCaption: string;
     function GetAddNewProjectEnabled: Boolean;
+    { IOTAProVersionControlSearchFileFind }
+    {$IFDEF TOOLSPROAPI}
+    function GetModifiedFiles(const AModifiedFiles: TStrings; AProgress: IOTAProSearchFileFindProgress): Boolean;
+    {$ENDIF TOOLSPROAPI}
     { Misc }
     procedure InitNonFileIdentifiers;
   protected
@@ -517,6 +525,100 @@ function TSvnNotifier.GetImageIndex: Integer;
 begin
   Result := SubversionImageIndex;
 end;
+
+{$IFDEF TOOLSPROAPI}
+function TSvnNotifier.GetModifiedFiles(const AModifiedFiles: TStrings;
+  AProgress: IOTAProSearchFileFindProgress): Boolean;
+
+  function IsSearchable(const AFileName: string; AFileState: TOTAProFileState): Boolean;
+  var
+    I: Integer;
+    ModuleServices: IOTAModuleServices;
+    Module: IOTAModule;
+    Editor: IOTAEditor;
+    SourceEditor: IOTASourceEditor;
+  begin
+    Result := AFileState.FileStateIndex in [fsiModified, fsiAdded];
+    if (not Result) and (AFileState.FileStateIndex = fsiNormal) then
+    begin
+      ModuleServices := BorlandIDEServices as IOTAModuleServices;
+      if Assigned(ModuleServices) then
+      begin
+        Module := ModuleServices.FindModule(AFileName);
+        if Assigned(Module) then
+        begin
+          for I := 0 to Pred(Module.GetModuleFileCount) do
+          begin
+            Editor := Module.GetModuleFileEditor(I);
+            if Assigned(Editor) and (Editor.QueryInterface(IOTASourceEditor, SourceEditor) = S_OK) then
+              if SourceEditor.Modified then
+              begin
+                Result := True;
+                Break;
+              end;
+          end;
+        end;
+      end;
+    end;
+  end;
+
+var
+  I: Integer;
+  DeferredFiles, TempFiles: TStringList;
+  Res: TOTAProFileStateResult;
+  FileState: TOTAProFileState;
+  Searchable: Boolean;
+  WaitCycles, FoundCount: Integer;
+  FileStateProvider: IOTAProVersionControlFileStateProvider;
+begin
+  if (AModifiedFiles.Count > 0) and Supports(GetFileStateProvider, IOTAProVersionControlFileStateProvider, FileStateProvider) then
+  begin
+    DeferredFiles := TStringList.Create;
+    TempFiles := TStringList.Create;
+    try
+      for I := 0 to AModifiedFiles.Count - 1 do
+      begin
+        Res := FileStateProvider.GetFileState(AModifiedFiles[I], FileState);
+        if (Res = fsrOK) and IsSearchable(AModifiedFiles[I], FileState) then
+          TempFiles.Add(AModifiedFiles[I])
+        else
+        if Res = fsrDeferred then
+          DeferredFiles.Add(AModifiedFiles[I]);
+      end;
+      WaitCycles := 0;//WaitCycles < 100 = up to about five seconds [100 * Sleep(50)]
+      while (DeferredFiles.Count > 0) and (WaitCycles < 100) do
+      begin
+        FoundCount := 0;
+        for I := DeferredFiles.Count - 1 downto 0 do
+        begin
+          Res := FileStateProvider.GetFileState(DeferredFiles[I], FileState);
+          if (Res = fsrOK) and IsSearchable(DeferredFiles[I], FileState) then
+            TempFiles.Add(DeferredFiles[I]);
+          if Res <> fsrDeferred then
+          begin
+            DeferredFiles.Delete(I);
+            Inc(FoundCount);
+          end;
+        end;
+        if FoundCount = 0 then
+        begin
+          Inc(WaitCycles);
+          Sleep(50);
+        end
+        else
+          WaitCycles := 0;
+      end;
+      AModifiedFiles.Assign(TempFiles);
+    finally
+      TempFiles.Free;
+      DeferredFiles.Free;
+    end;
+    Result := AModifiedFiles.Count > 0;
+  end
+  else
+    Result := False;
+end;
+{$ENDIF TOOLSPROAPI}
 
 function TSvnNotifier.GetName: string;
 begin

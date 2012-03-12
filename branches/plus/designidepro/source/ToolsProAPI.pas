@@ -73,6 +73,32 @@ type
     function GetAddNewProjectEnabled: Boolean;
   end;
 
+  IOTAProSearchFileFindProgress = interface(IInterface)
+  ['{3BC24160-7632-417D-B130-4F2CF4F69FF4}']
+    { This method changes the amount of dots (zero till three) behind the text
+      "Getting files" in the "Searching" tool window on the bottom of the right
+      hand side.  The window looks like this
+
+      Text: <Text to find>
+      Searching: Getting files[...]
+      Found: 0 }
+    procedure Step;
+  end;
+
+  { In order to support the "Find in Files" methods
+
+    ( ) Search modified files in project ( ) Search modified files in project group
+
+    an IOTAVersionControlNotifier should implement this interface.  These methods
+    are only visible if one or more notifiers implement this interface. }
+  IOTAProVersionControlSearchFileFind = interface(IInterface)
+  ['{DD0B5649-7010-44E1-8507-655911D2E37E}']
+    { Return if there is any modified file in "AModifiedFiles" and if yes, modify
+      "AModifiedFiles" that it contains only all modified files.  "AProgress" can
+      be used to indicate progress while determining the modified files }
+    function GetModifiedFiles(const AModifiedFiles: TStrings; AProgress: IOTAProSearchFileFindProgress): Boolean;
+  end;
+
   TOTAProFileState = record
     { Index of a common state like fsiNormal.  Look above in this file for other constants.
       Use -1 or values greater than the provided constants for other states }

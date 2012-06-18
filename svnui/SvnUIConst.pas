@@ -74,6 +74,7 @@ resourcestring
   sSelCountTotalCount = '%d files selected, %d files total';
   sMergeCaption = 'Merge';
   sNextCaption = '&Next >';
+  sSwitchOptionsCaption = '%s - Switch to Branch / Tag';
 
 implementation
 

@@ -72,6 +72,10 @@ const
   pmmpParentMergeSvnMenu = pmmpUserVersionControl + 180;
   pmmpRootDirMergeSvnMenu = pmmpUserVersionControl + 190;
   pmmpProjectDirMergeSvnMenu = pmmpUserVersionControl + 200;
+  // Switch
+  pmmpParentSwitchSvnMenu = pmmpUserVersionControl + 210;
+  pmmpRootDirSwitchSvnMenu = pmmpUserVersionControl + 220;
+  pmmpProjectDirSwitchSvnMenu = pmmpUserVersionControl + 230;
   // File Menu Items
   pmmpFileCommitSvnMenu = pmmpUserVersionControl + 1010;
   pmmpFileUpdateSvnMenu = pmmpUserVersionControl + 1020;
@@ -149,7 +153,7 @@ uses
   {$ENDIF TOOLSPROAPI}
   SysUtils, SvnIDEConst, SvnIDECommit, SvnIDEUpdate, SvnIDEClean, SvnIDELog,
   SvnIDEImport, SvnIDECheckout, SvnIDERepoBrowser, SvnIDEIcons, SvnIDEMerge,
-  SvnIDERevert;
+  SvnIDERevert, SvnIDESwitch;
 
 const
   sSubversionName = 'embarcadero.subversion';
@@ -212,7 +216,8 @@ var
   PMMParentLogSvnMenu, PMMRootDirLogSvnMenu, PMMProjectDirLogSvnMenu,
   PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu,
   PMMParentMergeSvnMenu, PMMRootDirMergeSvnMenu, PMMProjectDirMergeSvnMenu,
-  PMMFileRevert: IOTAProjectManagerMenu;
+  PMMFileRevert,
+  PMMParentSwitchSvnMenu, PMMRootDirSwitchSvnMenu: IOTAProjectManagerMenu;
 
   FBMMSvnParent, FBMMCommit, FBMMUpdate, FBMMLog, FBMMClean, FBMMRepo, FBMMMerge: IOTAProjectManagerMenu;
 
@@ -745,6 +750,8 @@ begin
     ProjectManagerMenuList.Add(PMMParentMergeSvnMenu);
     ProjectManagerMenuList.Add(PMMRootDirMergeSvnMenu);
     ProjectManagerMenuList.Add(PMMProjectDirMergeSvnMenu);
+    ProjectManagerMenuList.Add(PMMParentSwitchSvnMenu);
+    ProjectManagerMenuList.Add(PMMRootDirSwitchSvnMenu);
   end
   else
   begin
@@ -786,6 +793,8 @@ begin
   PMMRootDirMergeSvnMenu := TRootDirMergeSvnMenu.Create(ASvnIDEClient);
   PMMProjectDirMergeSvnMenu := TProjectDirMergeSvnMenu.Create(ASvnIDEClient);
   PMMFileRevert := TFileRevertSvnMenu.Create(ASvnIDEClient);
+  PMMParentSwitchSvnMenu := TParentSwitchSvnMenu.Create;
+  PMMRootDirSwitchSvnMenu := TRootDirSwitchSvnMenu.Create(ASvnIDEClient);
 
   FBMMSvnParent := TParentSvnMenu.Create;
   FBMMCommit := TDirCommitSvnMenu.Create(ASvnIDEClient);
@@ -824,6 +833,8 @@ begin
   PMMRootDirMergeSvnMenu := nil;
   PMMProjectDirMergeSvnMenu := nil;
   PMMFileRevert := nil;
+  PMMParentSwitchSvnMenu := nil;
+  PMMRootDirSwitchSvnMenu := nil;
 
   FBMMSvnParent := nil;
   FBMMCommit := nil;

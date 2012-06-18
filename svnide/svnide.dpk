@@ -53,7 +53,8 @@ contains
   SvnIDEColors in 'SvnIDEColors.pas',
   SvnIDETypes in 'SvnIDETypes.pas',
   SvnIDEMerge in 'SvnIDEMerge.pas',
-  SvnIDERevert in 'SvnIDERevert.pas';
+  SvnIDERevert in 'SvnIDERevert.pas',
+  SvnIDESwitch in 'SvnIDESwitch.pas';
 
 end.
 

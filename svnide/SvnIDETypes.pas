@@ -89,6 +89,21 @@ type
     destructor Destroy; override;
   end;
 
+  TSwitchThread = class(TCustomUpdateThread)
+  protected
+    FDepth: TSvnDepth;
+    FDepthIsSticky: TSvnBoolean;
+    FIgnoreExternals: TSvnBoolean;
+    FPath: string;
+    FPegRevision: TSvnRevNum;
+    FRevision: TSvnRevNum;
+    FURL: string;
+    procedure Execute; override;
+  public
+    constructor Create(SvnIDEClient: TSvnIDEClient; const APath, AURL: string; APegRevision: TSvnRevNum = -1; ARevision: TSvnRevNum = -1;
+      ADepth: TSvnDepth = svnDepthInfinity; ADepthIsSticky: TSvnBoolean = False; AIgnoreExternals: TSvnBoolean = False); reintroduce;
+  end;
+
   TCustomProgressThread = class(TThread)
   protected
     FAborted: Boolean;
@@ -350,6 +365,38 @@ begin
     FExceptionMessage := '';
     FSvnIDEClient.SvnClient.MergePeg(FURL, FRangesToMerge, FTargetWcpath, FPegRevision, UpdateCallBack, CancelCallback,
       FDepth, FIgnoreAncestry, FForce, FRecordOnly, FDryRun, FIgnoreEOL, FIgnoreSpace, FIgnoreSpaceAll);
+  except
+    if not GetSvnExceptionMessage(ExceptObject, FExceptionMessage) then
+      raise;
+  end;
+  Synchronize(nil, SyncCompleted);
+end;
+
+{ TSwitchThread }
+
+constructor TSwitchThread.Create(SvnIDEClient: TSvnIDEClient; const APath, AURL: string; APegRevision: TSvnRevNum = -1; ARevision: TSvnRevNum = -1;
+  ADepth: TSvnDepth = svnDepthInfinity; ADepthIsSticky: TSvnBoolean = False; AIgnoreExternals: TSvnBoolean = False);
+begin
+  inherited Create(SvnIDEClient);
+  FDepth := ADepth;
+  FDepthIsSticky := ADepthIsSticky;
+  FIgnoreExternals := AIgnoreExternals;
+  FPath := APath;
+  FPegRevision := APegRevision;
+  FRevision := ARevision;
+  FURL := AURL;
+  FUpdateDialog := GetUpdateDialog('', AbortCallBack, nil, nil);
+  FUpdateDialog.Caption := Format(sSwitchDialogCaption, [SvnIDEClient.SvnClient.SvnPathToNativePath(APath)]);
+  FUpdateDialog.Show;
+  Resume;
+end;
+
+procedure TSwitchThread.Execute;
+begin
+  NameThreadForDebugging('DelphiSVN Switch');
+  try
+    FExceptionMessage := '';
+    FSvnIDEClient.SvnClient.Switch(FPath, FURL, -1, -1, UpdateCallBack, CancelCallback);
   except
     if not GetSvnExceptionMessage(ExceptObject, FExceptionMessage) then
       raise;

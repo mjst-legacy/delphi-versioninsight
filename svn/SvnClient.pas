@@ -709,6 +709,10 @@ type
     procedure SetRevisionProperty(const URL: string; Revision: TSvnRevNum; PropName, PropValue: string; Force: Boolean = True; SubPool: PAprPool = nil);
     function StringListToAprArray(List: TStrings; SubPool: PAprPool = nil): PAprArrayHeader;
     function SvnPathToNativePath(const SvnPath: string; SubPool: PAprPool = nil): string;
+    procedure Switch(const Path, URL: string; PegRevision: TSvnRevNum = -1; Revision: TSvnRevNum = -1;
+      Callback: TSvnNotifyCallback = nil; SvnCancelCallback: TSvnCancelCallback = nil;
+      Depth: TSvnDepth = svnDepthInfinity; DepthIsSticky: TSvnBoolean = False;
+      IgnoreExternals: TSvnBoolean = False; SubPool: PAprPool = nil);
     procedure Update(PathNames: TStrings; Callback: TSvnNotifyCallback = nil; Recurse: Boolean = True;
       IgnoreExternals: Boolean = False; ConflictCallBack: TSvnConflictCallback = nil;
       SvnCancelCallback: TSvnCancelCallback = nil; SubPool: PAprPool = nil);
@@ -4880,6 +4884,59 @@ begin
     AprCheck(apr_filepath_merge(NativePath, '', PAnsiChar(UTF8Encode(SvnPath)), APR_FILEPATH_NATIVE, SubPool));
     Result := UTF8ToString(NativePath);
   finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
+procedure TSvnClient.Switch(const Path, URL: string; PegRevision: TSvnRevNum = -1; Revision: TSvnRevNum = -1;
+  Callback: TSvnNotifyCallback = nil; SvnCancelCallback: TSvnCancelCallback = nil;
+  Depth: TSvnDepth = svnDepthInfinity; DepthIsSticky: TSvnBoolean = False;
+  IgnoreExternals: TSvnBoolean = False; SubPool: PAprPool = nil);
+var
+  NewPool: Boolean;
+  PegRev, Rev: TSvnOptRevision;
+  EncodedURL: PAnsiChar;
+  SaveCancel: TSvnCancelCallback;
+  ResultRevision: TSvnRevNum;
+begin
+  if not Initialized then
+    Initialize;
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    FillChar(PegRev, SizeOf(TSvnOptRevision), 0);
+    if PegRevision <= 0 then
+      PegRev.Kind := svnOptRevisionHead
+    else
+    begin
+      PegRev.Kind := svnOptRevisionNumber;
+      PegRev.Value.number := PegRevision;
+    end;
+    FillChar(Rev, SizeOf(TSvnOptRevision), 0);
+    if Revision <= 0 then
+      Rev.Kind := svnOptRevisionHead
+    else
+    begin
+      Rev.Kind := svnOptRevisionNumber;
+      Rev.Value.number := Revision;
+    end;
+
+    FCancelled := False;
+    FNotifyCallback := Callback;
+    SaveCancel := FOnCancel;
+    try
+      if Assigned(SvnCancelCallback) then
+        FOnCancel := SvnCancelCallback;
+      EncodedURL := svn_path_uri_encode(PAnsiChar(UTF8Encode(URL)), SubPool);
+      SvnCheck(svn_client_switch2(ResultRevision, PAnsiChar(UTF8Encode(Path)), EncodedURL, @PegRev, @Rev,
+        Depth, DepthIsSticky, IgnoreExternals, False, FCtx, SubPool));
+    finally
+      FOnCancel := SaveCancel;
+    end;
+  finally
+    FNotifyCallback := nil;
     if NewPool then
       apr_pool_destroy(SubPool);
   end;

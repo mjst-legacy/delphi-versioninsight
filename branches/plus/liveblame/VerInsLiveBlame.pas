@@ -93,6 +93,21 @@ begin
 end;
 {$ENDIF ~DEBUG}
 
+function UTCToTzDateTime(Value: TDateTime): TDateTime;
+var
+  TZ: TTimeZoneInformation;
+begin
+  Result := Value;
+  case GetTimeZoneInformation(TZ) of
+    TIME_ZONE_ID_DAYLIGHT:
+      Result := Result - (TZ.Bias + TZ.DaylightBias) / MinsPerDay;
+    TIME_ZONE_ID_STANDARD:
+      Result := Result - (TZ.Bias + TZ.StandardBias) / MinsPerDay;
+    TIME_ZONE_ID_UNKNOWN:
+      Result := Result - TZ.Bias / MinsPerDay;
+  end;
+end;
+
 type
   TLiveBlamePaintBox = class(TCustomControl)
   private
@@ -1136,8 +1151,8 @@ begin
             LHRevision.FUserStr := ASettings.UserSettingsList[Idx].VisibleName
           else
             LHRevision.FUserStr := FFileHistory.Author[I];
-          LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, FFileHistory.Date[I]);
-          LHRevision.FDate := FFileHistory.Date[I];
+          LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, UTCToTzDateTime(FFileHistory.Date[I]));
+          LHRevision.FDate := UTCToTzDateTime(FFileHistory.Date[I]);
           LHRevision.FComment := TrimRight(FFileHistory.Comment[I]);
         end;
         FRevisions.Add(TJVCSLineHistoryRevision.Create);

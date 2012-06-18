@@ -42,6 +42,8 @@ type
   end;
 
   TParentSwitchSvnMenu = class(TSvnMenu)
+  protected
+    function GetImageIndex: Integer; override;
   public
     constructor Create;
   end;
@@ -51,15 +53,23 @@ type
     constructor Create(ASvnIDEClient: TSvnIDEClient);
   end;
 
+  TDirSwitchSvnMenu = class(TBaseSwitchSvnMenu)
+  protected
+    function GetImageIndex: Integer; override;
+  public
+    constructor Create(ASvnIDEClient: TSvnIDEClient);
+  end;
+
 implementation
 
-uses SysUtils, SvnIDEConst, ToolsAPI, Controls, Forms,
+uses SysUtils, SvnIDEConst, ToolsAPI, Controls, Forms, SvnIDEIcons,
   SvnIDETypes, SvnClientRepoBrowserDialog;
 
 const
   sPMVSwitchParent = 'SvnSwitchParent';
   sPMVRootDirSwitch = 'RootDirSwitch';
   sPMVProjectDirSwitch = 'ProjectDirSwitch';
+  sPMVDirSwitch = 'DirSwitch';
 
 { TBaseSwitchSvnMenu }
 
@@ -139,6 +149,11 @@ begin
   FHelpContext := 0;
 end;
 
+function TParentSwitchSvnMenu.GetImageIndex: Integer;
+begin
+  Result := SwitchImageIndex;
+end;
+
 { TRootDirSwitchSvnMenu }
 
 constructor TRootDirSwitchSvnMenu.Create(ASvnIDEClient: TSvnIDEClient);
@@ -149,6 +164,24 @@ begin
   FVerb := sPMVRootDirSwitch;
   FPosition := pmmpRootDirSwitchSvnMenu;
   FHelpContext := 0;
+end;
+
+{ TDirSwitchSvnMenu }
+
+constructor TDirSwitchSvnMenu.Create(ASvnIDEClient: TSvnIDEClient);
+begin
+  inherited Create(ASvnIDEClient);
+  FRootType := rtDir;
+  FParent := sPMVSvnParent;
+  FCaption := sPMMSwitch;
+  FVerb := sPMVDirSwitch;
+  FPosition := pmmpProjectDirSwitchSvnMenu;
+  FHelpContext := 0;
+end;
+
+function TDirSwitchSvnMenu.GetImageIndex: Integer;
+begin
+  Result := SwitchImageIndex;
 end;
 
 end.

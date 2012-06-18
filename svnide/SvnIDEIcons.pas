@@ -36,6 +36,7 @@ var
   RepoBrowserImageIndex: Integer = -1;
   MergeImageIndex: Integer = -1;
   RevertImageIndex: Integer = -1;
+  SwitchImageIndex: Integer = -1;
 
   //Message View
   SubversionMessageViewImageIndex: Integer = -1;
@@ -84,6 +85,7 @@ begin
   RepoBrowserImageIndex := RegisterMenuIcon('tsvn_menurepobrowse');
   MergeImageIndex := RegisterMenuIcon('tsvn_menumerge');
   RevertImageIndex := RegisterMenuIcon('tsvn_menurevert');
+  SwitchImageIndex := RegisterMenuIcon('tsvn_menuswitch');
 
   //SubversionMessageViewImageIndex := RegisterMessageViewIcon('subversion_menuicon');
   SubversionMessageViewImageIndex := RegisterMessageViewIconFromModuleResourceID(GetSubversionIconBinName, 'subversion_menuicon', 1);

@@ -219,7 +219,7 @@ var
   PMMFileRevert,
   PMMParentSwitchSvnMenu, PMMRootDirSwitchSvnMenu: IOTAProjectManagerMenu;
 
-  FBMMSvnParent, FBMMCommit, FBMMUpdate, FBMMLog, FBMMClean, FBMMRepo, FBMMMerge: IOTAProjectManagerMenu;
+  FBMMSvnParent, FBMMCommit, FBMMUpdate, FBMMLog, FBMMClean, FBMMRepo, FBMMMerge, FBMMSwitch: IOTAProjectManagerMenu;
 
 function RootDirectory(const SvnClient: TSvnClient; const Path: string): string;
 var
@@ -503,6 +503,7 @@ begin
     FileBrowserMenuList.Add(FBMMClean);
     FileBrowserMenuList.Add(FBMMRepo);
     FileBrowserMenuList.Add(FBMMMerge);
+    FileBrowserMenuList.Add(FBMMSwitch);
   end;
 end;
 
@@ -803,6 +804,7 @@ begin
   FBMMClean := TDirCleanSvnMenu.Create(ASvnIDEClient);
   FBMMRepo := TDirRepoSvnMenu.Create(ASvnIDEClient);
   FBMMMerge := TDirMergeSvnMenu.Create(ASvnIDEClient);
+  FBMMSwitch := TDirSwitchSvnMenu.Create(ASvnIDEClient);
 end;
 
 procedure UnRegisterMenus;
@@ -843,6 +845,7 @@ begin
   FBMMClean := nil;
   FBMMRepo := nil;
   FBMMMerge := nil;
+  FBMMSwitch := nil;
 end;
 
 { TParentSvnMenu }

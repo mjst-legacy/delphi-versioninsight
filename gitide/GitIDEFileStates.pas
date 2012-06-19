@@ -227,7 +227,7 @@ begin
                 begin
                   Properties.Add('Commit Author=' + SvnItem.HistoryItems[0].Author);
                   Properties.Add('Commit Author Email=' + SvnItem.HistoryItems[0].AuthorEMail);
-                  Properties.Add('Commit Date=' + DateTimeToStr(SvnItem.HistoryItems[0].Date));
+                  Properties.Add('Commit Date=' + DateTimeToStr(UTCToTzDateTime(SvnItem.HistoryItems[0].Date)));
                   Properties.Add('Commit Hash=' + SvnItem.HistoryItems[0].Hash);
                 end;
               end;

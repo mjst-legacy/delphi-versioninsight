@@ -1011,6 +1011,49 @@ begin
   end;
 end;
 
+function LogMessageSync(baton: Pointer; changed_paths: PAprHash; revision: TSvnRevNum; author, date, message: PAnsiChar;
+  pool: PAprPool): PSvnError; cdecl;
+var
+  Item: TSvnHistoryItem;
+  Time: TAprTime;
+  H: PAprHashIndex;
+  PName: PAnsiChar;
+  PValue: Pointer;
+begin
+  Result := nil;
+
+  Item := TSvnHistoryItem.Create;
+  try
+    Item.FOwner := baton;
+    Item.FRevision := revision;
+    Item.FAuthor := UTF8ToString(author);
+    Item.FLogMessage := UTF8ToString(message);
+    if Assigned(date) and (date^ <> #0) then
+    begin
+      SvnCheck(svn_time_from_cstring(Time, date, pool));
+      Item.FTime := AprTimeToDateTime(Time);
+    end
+    else
+      Item.FTime := 0;
+    if TSvnItem(baton).IncludeChangeFiles and (changed_paths <> nil) then
+    begin
+      Item.FChangeFiles := TStringList.Create;
+      H := apr_hash_first(Pool, changed_paths);
+        while Assigned(H) do
+        begin
+          apr_hash_this(H, @PName, 0, @PValue);
+          Item.FChangeFiles.Add(char(PSvnLogChangedPath(PValue).Action) + UTF8ToString(PName));
+          H := apr_hash_next(H);
+        end;
+    end;
+    TSvnItem(baton).FHistory.Add(Item);
+    apr_pool_clear(pool);
+  except
+    Item.Free;
+    raise;
+  end;
+end;
+
 function NotifyActionStr(Action: TSvnWcNotifyAction): string;
 const
   NotifyActionStrings: array[TSvnWcNotifyAction] of string = (SWcNotifyAdd, SWcNotifyCopy, SWcNotifyDelete,
@@ -1962,14 +2005,23 @@ begin
     AprCheck(apr_pool_create_ex(SubPool, FSvnClient.Pool, nil, FSvnClient.Allocator));
     try
       FillChar(StartRevision, SizeOf(TSvnOptRevision), 0);
-      StartRevision.Kind := svnOptRevisionHead;
+      if LogFirstRev = -1 then
+        StartRevision.Kind := svnOptRevisionHead
+      else
+      begin
+        StartRevision.Kind := svnOptRevisionNumber;
+        StartRevision.Value.number := LogFirstRev;
+      end;
       FillChar(EndRevision, SizeOf(TSvnOptRevision), 0);
       EndRevision.Kind := svnOptRevisionNumber;
-      EndRevision.Value.number := 0;
+      if LogLastRev = -1 then
+        EndRevision.Value.number := 0
+      else
+        EndRevision.Value.number := LogLastRev;
 
       Targets := FSvnClient.PathNamesToAprArray([FSvnPathName], SubPool);
       FSvnClient.FCancelled := False;
-      Error := svn_client_log2(Targets, @StartRevision, @EndRevision, FLogLimit, False, False, LogMessage, Self, FSvnClient.Ctx,
+      Error := svn_client_log2(Targets, @StartRevision, @EndRevision, FLogLimit, False, False, LogMessageSync, Self, FSvnClient.Ctx,
         SubPool);
       if Assigned(Error) then
       begin

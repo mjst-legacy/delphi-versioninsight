@@ -493,7 +493,14 @@ type
   private
     FFileHistory: IOTAFileHistory;
     FAnnotationLineProvider: IOTAAnnotationLineProvider;
+    FAnnotationLineProviderHelper: TList<string>;
+    FAnnotationLineProviderHelperUpdateRequired: Boolean;
+    FUpdateCheck: Boolean;
+    FUpdateCheckTopRevisionID: string;
+    FUpdateCheckRevisionCount: Integer;
   public
+    constructor Create(const AFileName: string);
+    destructor Destroy; override;
     { IOTAAsynchronousHistoryUpdater }
     procedure Completed;
     function UpdateHistoryItems(FileHistory: IOTAFileHistory; FirstNewIndex, LastNewIndex: Integer): Boolean;
@@ -1118,6 +1125,7 @@ end;
 procedure TGenericLiveBlameData.AnnotationComplete(const AnnotationLineProvider: IOTAAnnotationLineProvider);
 begin
   FAnnotationLineProvider := AnnotationLineProvider;
+  FAnnotationLineProviderHelperUpdateRequired := True;
   FBlameInfoReady := True;
   FStage := 3;
   FPaintBox.Invalidate;
@@ -1168,9 +1176,16 @@ begin
         FFileRevision.FUserStr := 'User';//TODO:
         FFileRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
         FFileRevision.FDate := Now;
-        for I := 1 to FAnnotationLineProvider.Count do
+        if FAnnotationLineProviderHelperUpdateRequired then
         begin
-          if not RevisionsDict.TryGetValue(Trim(FAnnotationLineProvider.GutterInfo[I]), LHRevision) then
+          FAnnotationLineProviderHelper.Clear;
+          for I := 1 to FAnnotationLineProvider.Count do
+            FAnnotationLineProviderHelper.Add(Trim(FAnnotationLineProvider.GutterInfo[I]));
+          FAnnotationLineProviderHelperUpdateRequired := False;
+        end;
+        for I := 0 to FAnnotationLineProviderHelper.Count - 1 do
+        begin
+          if not RevisionsDict.TryGetValue(FAnnotationLineProviderHelper[I], LHRevision) then
             LHRevision := nil;
           FOrgLines.Add(LHRevision);
           FLines.Add(LHRevision);
@@ -1190,26 +1205,63 @@ var
   RC: IStream;
   R, W: Int64;
   StreamStat: TStatStg;
+  UpdateRequired: Boolean;
 begin
-  if Assigned(FFileHistory) and Supports(FFileHistory, IOTAAsynchronousAnnotationProvider) and
-    (FFileHistory as IOTAAsynchronousAnnotationProvider).CanAnnotateFile(FFileName) and
-    (FFileHistory.Count > 0) then
+  if FUpdateCheck then
   begin
-    FFirstRevisionIDStr := FFileHistory.Ident[FFileHistory.Count - 1];
-    (FFileHistory as IOTAAsynchronousAnnotationProvider).StartAsynchronousUpdate(FFileName, 0, Self);
+    UpdateRequired := ((FFileHistory.Count <> FUpdateCheckRevisionCount) or
+    ((FFileHistory.Count > 0) and (FUpdateCheckTopRevisionID <> FFileHistory.Ident[0])));
+    FUpdateCheck := False;
+    if UpdateRequired then
+    begin
+      FAnnotationLineProvider := nil;
+      FAnnotationLineProviderHelper.Clear;
+    end;
+  end
+  else
+    UpdateRequired := True;
+  if UpdateRequired then
+  begin
+    if Assigned(FFileHistory) and Supports(FFileHistory, IOTAAsynchronousAnnotationProvider) and
+      (FFileHistory as IOTAAsynchronousAnnotationProvider).CanAnnotateFile(FFileName) and
+      (FFileHistory.Count > 0) then
+    begin
+      FUpdateCheckTopRevisionID := FFileHistory.Ident[0];
+      FUpdateCheckRevisionCount := FFileHistory.Count;
+      FFirstRevisionIDStr := FFileHistory.Ident[FFileHistory.Count - 1];
+      (FFileHistory as IOTAAsynchronousAnnotationProvider).StartAsynchronousUpdate(FFileName, 0, Self);
 
-    RC := FFileHistory.Content[0];
-    MS := TMemoryStream.Create;
-    SA := TStreamAdapter.Create(MS);
-    RC.Seek(0, 0, R);
-    if RC.Stat(StreamStat, 0) = S_OK then
-      RC.CopyTo(SA, StreamStat.cbSize, R, W);
-    MS.Position := 0;
-    SetLength(FLatestRevisionContent, MS.Size);
-    MS.Read(PAnsiChar(FLatestRevisionContent)^, MS.Size);
+      RC := FFileHistory.Content[0];
+      MS := TMemoryStream.Create;
+      SA := TStreamAdapter.Create(MS);
+      RC.Seek(0, 0, R);
+      if RC.Stat(StreamStat, 0) = S_OK then
+        RC.CopyTo(SA, StreamStat.cbSize, R, W);
+      MS.Position := 0;
+      SetLength(FLatestRevisionContent, MS.Size);
+      MS.Read(PAnsiChar(FLatestRevisionContent)^, MS.Size);
+    end;
+    FStage := 2;
+    FPaintBox.Invalidate;
+  end
+  else
+  begin
+    FBlameInfoReady := True;
+    FStage := 3;
+    FPaintBox.Invalidate;
   end;
-  FStage := 2;
-  FPaintBox.Invalidate;
+end;
+
+constructor TGenericLiveBlameData.Create(const AFileName: string);
+begin
+  inherited Create(AFileName);
+  FAnnotationLineProviderHelper := TList<string>.Create;
+end;
+
+destructor TGenericLiveBlameData.Destroy;
+begin
+  FAnnotationLineProviderHelper.Free;
+  inherited Destroy;
 end;
 
 procedure TGenericLiveBlameData.Load;
@@ -1221,9 +1273,17 @@ var
   ProviderName: string;
   Idents: TStringList;
 begin
-  if (not FLoading) and not Assigned(FAnnotationLineProvider) then
+  if (not FLoading) and (not Assigned(FAnnotationLineProvider) or FUpdateCheck) then
   begin
-    FAnnotationLineProvider := nil;
+    if FUpdateCheck then
+    begin
+      FLastAge := 0;
+      FLastStreamSize := 0;
+      FBlameInfoAvailable := False;
+      FBlameInfoReady := False;
+    end
+    else
+      FAnnotationLineProvider := nil;
 
     ProviderName := '';
     VersionControlServices := BorlandIDEServices as IOTAVersionControlServices;
@@ -2121,6 +2181,8 @@ begin
   end;
   if Assigned(FLiveBlameData) then
   begin
+    if Visible and not FLiveBlameData.FButtonDown and (GetKeyState(VK_SHIFT) < 0) then
+      FLiveBlameData.FUpdateCheck := True;
     FLiveBlameData.FButtonDown := Visible;
     if Visible and UpdateModificationColors then
       for I := 0 to Pred(FLiveBlameDataList.Count) do

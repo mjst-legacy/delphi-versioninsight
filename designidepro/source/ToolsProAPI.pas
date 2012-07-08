@@ -1,4 +1,4 @@
-//Copyright (c) 2011 Uwe Schuster
+//Copyright (c) 2011 - 2012 Uwe Schuster
 unit ToolsProAPI;
 
 interface
@@ -97,6 +97,75 @@ type
       "AModifiedFiles" that it contains only all modified files.  "AProgress" can
       be used to indicate progress while determining the modified files }
     function GetModifiedFiles(const AModifiedFiles: TStrings; AProgress: IOTAProSearchFileFindProgress): Boolean;
+  end;
+
+  IOTAProMacroParameter = interface(IInterface)
+  ['{12ABC555-6260-4940-9C06-0754AD80F5A7}']
+    { Return the display name of the parameter.  This is used in the configuration dialog }
+    function GetDisplayName: string;
+    { Return the name of the parameter.  This is used within the key values format definition }
+    function GetName: string;
+
+    property DisplayName: string read GetDisplayName;
+    property Name: string read GetName;
+  end;
+
+  IOTAProMacro = interface(IInterface)
+  ['{7CC4D53F-70F4-4C70-8F5A-EBE66C6B1B69}']
+    { Return the display name of the macro.  This is used in the configuration dialog }
+    function GetDisplayName: string;
+    { Return the name of the macro.  This is used within the key values format definition }
+    function GetName: string;
+    { Return the number of available parameters }
+    function GetParameterCount: Integer;
+    { Return the specified parameter }
+    function GetParameters(AIndex: Integer): IOTAProMacroParameter;
+
+    property DisplayName: string read GetDisplayName;
+    property Name: string read GetName;
+    property ParameterCount: Integer read GetParameterCount;
+    property Parameters[AIndex: Integer]: IOTAProMacroParameter read GetParameters;
+  end;
+
+  { In order to support the "Version Info Update" feature an
+    IOTAVersionControlNotifier should implement this interface }
+  IOTAProVersionControlVersionInfoNotifier = interface(IInterface)
+  ['{B20FC206-B1CA-4B7F-86A5-4B543C25A955}']
+    { Return S with expanded macros.  All macros are enclosed in "$(" + ")" and for
+      the keys and values specified in the PrepareMacros documentation the ExpandMacros
+      function is called first with
+
+      16.0.0.$(REVISION)
+
+      and afterwards with
+
+      @$(REVISION) $(REVISIONAUTHOR) $(UNCOMMITTEDCHANGES|TrueStr=dirty)
+    }
+    function ExpandMacros(const S: string): string;
+    { Return the number of available macros }
+    function GetMacroCount: Integer;
+    { Return the specified macro }
+    function GetMacros(AIndex: Integer): IOTAProMacro;
+    { This procedure is called when the version info is updated or when testing the
+      key value format definitions.  This procedure gives the notifier the opportunity
+      to gather the values for all macro at once and so values can be re-used to
+      improve the performance and without worrying about outdated cache values.
+      "AMacros" contains a line for each macro + parameters. When lets say the
+      defined keys and values are
+
+      FileVersion = 16.0.0.$(REVISION)
+      Comments    = @$(REVISION) $(REVISIONAUTHOR) $(UNCOMMITTEDCHANGES|TrueStr=dirty)
+
+      then the values in AMacros are
+
+      REVISION
+      REVISIONAUTHOR
+      UNCOMMITTEDCHANGES|TrueStr=dirty
+    }
+    procedure PrepareMacros(AProject: IOTAProject; AMacros: TStrings);
+
+    property MacroCount: Integer read GetMacroCount;
+    property Macros[AIndex: Integer]: IOTAProMacro read GetMacros;
   end;
 
   TOTAProFileState = record

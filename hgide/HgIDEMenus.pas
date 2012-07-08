@@ -141,10 +141,11 @@ implementation
 
 uses
   {$IFDEF TOOLSPROAPI}
-  HgIDEFileStates,
+  HgIDEFileStates, VerInsIDEMacros,
   {$ENDIF TOOLSPROAPI}
   SysUtils, HgIDEConst, HgIDECommit{, SvnIDEUpdate, SvnIDEClean}, HgIDELog{,
-  SvnIDEImport}, HgIDECheckout{, SvnIDERepoBrowser}, HgIDEIcons, HgIDERevert;
+  SvnIDEImport}, HgIDECheckout{, SvnIDERepoBrowser}, HgIDEIcons, HgIDERevert,
+  Generics.Collections;
 
 const
   sMercurialName = 'versioninsight.mercurial';
@@ -154,7 +155,8 @@ type
     const MenuContextList: IInterfaceList);
 
   THgNotifier = class(TInterfacedObject, IOTAVersionControlNotifier,
-    IOTAVersionControlNotifier150 {$IFDEF TOOLSPROAPI}, IOTAProVersionControlNotifier155, IOTAProVersionControlSearchFileFind{$ENDIF})
+    IOTAVersionControlNotifier150 {$IFDEF TOOLSPROAPI}, IOTAProVersionControlNotifier155,
+    IOTAProVersionControlSearchFileFind, IOTAProVersionControlVersionInfoNotifier{$ENDIF})
     { IOTANotifier }
     procedure AfterSave;
     procedure BeforeSave;
@@ -182,11 +184,23 @@ type
     {$IFDEF TOOLSPROAPI}
     function GetModifiedFiles(const AModifiedFiles: TStrings; AProgress: IOTAProSearchFileFindProgress): Boolean;
     {$ENDIF TOOLSPROAPI}
+    { IOTAProVersionControlVersionInfoNotifier }
+    function GetMacroCount: Integer;
+    {$IFDEF TOOLSPROAPI}
+    function GetMacros(AIndex: Integer): IOTAProMacro;
+    {$ENDIF TOOLSPROAPI}
+    procedure PrepareMacros(AProject: IOTAProject; AMacros: TStrings);
+    function ExpandMacros(const S: string): string;
     { Misc }
+    procedure InitMacroList;
     procedure InitNonFileIdentifiers;
+    procedure MacroStatusCallback(Sender: TObject; Item: THgItem; var Cancel: Boolean);
   protected
     FHgIDEClient: THgIDEClient;
+    FMacros: TInterfaceList;
+    FMacroValues: TStringList;
     FNonFileIdentifiers: TStringList;
+    FFoundModifications: Boolean;
   public
     constructor Create(const HgIDEClient: THgIDEClient);
     destructor Destroy; override;
@@ -463,13 +477,19 @@ constructor THgNotifier.Create(const HgIDEClient: THgIDEClient);
 begin
   inherited Create;
   FHgIDEClient := HgIDEClient;
+  FMacros := TInterfaceList.Create;
+  FMacroValues := TStringList.Create;
+  FMacroValues.NameValueSeparator := #1;
   FNonFileIdentifiers := TStringList.Create;
   FNonFileIdentifiers.Sorted := True;
+  InitMacroList;
   InitNonFileIdentifiers;
 end;
 
 destructor THgNotifier.Destroy;
 begin
+  FMacros.Free;
+  FMacroValues.Free;
   FNonFileIdentifiers.Free;
   inherited Destroy;
 end;
@@ -477,6 +497,15 @@ end;
 procedure THgNotifier.Destroyed;
 begin
 
+end;
+
+function THgNotifier.ExpandMacros(const S: string): string;
+var
+  I: Integer;
+begin
+  Result := S;
+  for I := 0 to FMacroValues.Count - 1 do
+    Result := StringReplace(Result, '$(' + FMacroValues.Names[I] + ')', FMacroValues.ValueFromIndex[I], [rfReplaceAll]);
 end;
 
 procedure THgNotifier.FileBrowserMenu(const IdentList: TStrings;
@@ -520,6 +549,44 @@ end;
 function THgNotifier.GetName: string;
 begin
   Result := sMercurialName;
+end;
+
+procedure THgNotifier.InitMacroList;
+{$IFDEF TOOLSPROAPI}
+var
+  Macro: TOTAMacro;
+begin
+  //TODO: Resource strings
+  FMacros.Add(TOTAMacro.Create('CHANGESET', 'Current working copy changeset'));
+  Macro := FMacros.Last as TOTAMacro;
+  Macro.AddParameter('Path', 'Path (Default = working copy root; . = project dir)');
+  Macro.AddParameter('Format', 'Format');
+
+  FMacros.Add(TOTAMacro.Create('CHANGESETID', 'Current working copy changeset ID'));
+  Macro := FMacros.Last as TOTAMacro;
+  Macro.AddParameter('Path', 'Path (Default = working copy root; . = project dir)');
+
+  FMacros.Add(TOTAMacro.Create('CHANGESETAUTHOR', 'Current working copy changeset author'));
+  Macro := FMacros.Last as TOTAMacro;
+  Macro.AddParameter('Path', 'Path (Default = working copy root; . = project dir)');
+
+  FMacros.Add(TOTAMacro.Create('CHANGESETAUTHOREMAIL', 'Current working copy changeset author email'));
+  Macro := FMacros.Last as TOTAMacro;
+  Macro.AddParameter('Path', 'Path (Default = working copy root; . = project dir)');
+
+  FMacros.Add(TOTAMacro.Create('CHANGESETDATE', 'Current working copy changeset date'));
+  Macro := FMacros.Last as TOTAMacro;
+  Macro.AddParameter('Path', 'Path (Default = working copy root; . = project dir)');
+  Macro.AddParameter('Format', 'Format');
+
+  FMacros.Add(TOTAMacro.Create('UNCOMMITTEDCHANGES', 'Working copy contains uncommitted changes'));
+  Macro := FMacros.Last as TOTAMacro;
+  Macro.AddParameter('Paths', 'Paths');
+  Macro.AddParameter('TrueStr', 'String if working copy contains uncommitted changes');
+  Macro.AddParameter('FalseStr', 'String if working copy does not contain uncommitted changes');
+{$ELSE ~TOOLSPROAPI}
+begin
+{$ENDIF ~TOOLSPROAPI}
 end;
 
 procedure THgNotifier.InitNonFileIdentifiers;
@@ -599,7 +666,17 @@ begin
   end;
 end;
 
+function THgNotifier.GetMacroCount: Integer;
+begin
+  Result := FMacros.Count;
+end;
+
 {$IFDEF TOOLSPROAPI}
+function THgNotifier.GetMacros(AIndex: Integer): IOTAProMacro;
+begin
+  Result := FMacros[AIndex] as IOTAProMacro;
+end;
+
 function THgNotifier.GetModifiedFiles(const AModifiedFiles: TStrings; AProgress: IOTAProSearchFileFindProgress): Boolean;
 
   function IsSearchable(const AFileName: string; AFileState: TOTAProFileState): Boolean;
@@ -692,9 +769,209 @@ begin
 end;
 {$ENDIF TOOLSPROAPI}
 
+procedure THgNotifier.MacroStatusCallback(Sender: TObject; Item: THgItem; var Cancel: Boolean);
+begin
+  if (not AnsiSameText(ExtractFileExt(Item.FileName), '.dproj')) and
+    not (Item.Status in [gsUnknown, gsUnversioned]) then
+  begin
+    Cancel := True;
+    FFoundModifications := True;
+  end;
+end;
+
 procedure THgNotifier.Modified;
 begin
 
+end;
+
+procedure THgNotifier.PrepareMacros(AProject: IOTAProject; AMacros: TStrings);
+var
+  HistoryItems: TObjectList<THgItem>;
+
+  function GetPathLatestHistoryItem(const APath: string): THgHistoryItem;
+  var
+    I: Integer;
+    Found: Boolean;
+  begin
+    Result := nil;
+    Found := False;
+    for I := 0 to HistoryItems.Count - 1 do
+      if HistoryItems[I].FileName = APath then
+      begin
+        Found := True;
+        if HistoryItems[I].HistoryCount > 0 then
+          Result := HistoryItems[I].HistoryItems[0]
+        else
+          Result := nil;
+      end;
+    if not Found then
+    begin
+      HistoryItems.Add(THgItem.Create(IDEClient.HgClient, APath));
+      HistoryItems.Last.LoadHistory(True);
+      if HistoryItems.Last.HistoryCount > 0 then
+        Result := HistoryItems.Last.HistoryItems[0]
+      else
+        Result := nil;
+    end;
+  end;
+
+var
+  I, J: Integer;
+  Path: string;
+  Author, DateStr, FormatStr, ChangeSetStr: string;
+  MacroParts: TStringList;
+  Paths, ModificationPaths: TStringList;
+  HistoryItem: THgHistoryItem;
+begin
+  FMacroValues.Clear;
+  MacroParts := TStringList.Create;
+  HistoryItems := TObjectList<THgItem>.Create;
+  try
+    MacroParts.Delimiter := '|';
+    MacroParts.StrictDelimiter := True;
+    for I := 0 to AMacros.Count - 1 do
+    begin
+      MacroParts.DelimitedText := AMacros[I];
+      if MacroParts.Count > 0 then
+      begin
+        if MacroParts[0] = 'CHANGESET' then
+        begin
+          Path := MacroParts.Values['Path'];
+          if Path = '' then
+            Path := RootDirectory(IDEClient.HgClient, ExtractFilePath(AProject.FileName))
+          else
+          if Pos('.', Path) = 1 then
+            Path := ExtractFilePath(AProject.FileName) + Path;
+          FormatStr := MacroParts.Values['Format'];
+          HistoryItem := GetPathLatestHistoryItem(Path);
+          if Assigned(HistoryItem) then
+            ChangeSetStr := HistoryItem.ChangeSet
+          else
+            ChangeSetStr := '';
+          if (ChangeSetStr <> '') and (FormatStr <> '') then
+            ChangeSetStr := Format(FormatStr, [ChangeSetStr]);
+          FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + '%s', [AMacros[I], ChangeSetStr]));
+        end
+        else
+        if MacroParts[0] = 'CHANGESETID' then
+        begin
+          Path := MacroParts.Values['Path'];
+          if Path = '' then
+            Path := RootDirectory(IDEClient.HgClient, ExtractFilePath(AProject.FileName))
+          else
+          if Pos('.', Path) = 1 then
+            Path := ExtractFilePath(AProject.FileName) + Path;
+          HistoryItem := GetPathLatestHistoryItem(Path);
+          if Assigned(HistoryItem) then
+            ChangeSetStr := IntToStr(HistoryItem.ChangeSetID)
+          else
+            ChangeSetStr := '';
+          FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + '%s', [AMacros[I], ChangeSetStr]));
+        end
+        else
+        if MacroParts[0] = 'CHANGESETAUTHOR' then
+        begin
+          Path := MacroParts.Values['Path'];
+          if Path = '' then
+            Path := RootDirectory(IDEClient.HgClient, ExtractFilePath(AProject.FileName))
+          else
+          if Pos('.', Path) = 1 then
+            Path := ExtractFilePath(AProject.FileName) + Path;
+          HistoryItem := GetPathLatestHistoryItem(Path);
+          if Assigned(HistoryItem) then
+            Author := HistoryItem.Author
+          else
+            Author := '';
+          FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + '%s', [AMacros[I], Author]));
+        end
+        else
+        if MacroParts[0] = 'CHANGESETAUTHOREMAIL' then
+        begin
+          Path := MacroParts.Values['Path'];
+          if Path = '' then
+            Path := RootDirectory(IDEClient.HgClient, ExtractFilePath(AProject.FileName))
+          else
+          if Pos('.', Path) = 1 then
+            Path := ExtractFilePath(AProject.FileName) + Path;
+          HistoryItem := GetPathLatestHistoryItem(Path);
+          if Assigned(HistoryItem) then
+            Author := HistoryItem.AuthorEmail
+          else
+            Author := '';
+          FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + '%s', [AMacros[I], Author]));
+        end
+        else
+        if MacroParts[0] = 'CHANGESETDATE' then
+        begin
+          Path := MacroParts.Values['Path'];
+          if Path = '' then
+            Path := RootDirectory(IDEClient.HgClient, ExtractFilePath(AProject.FileName))
+          else
+          if Pos('.', Path) = 1 then
+            Path := ExtractFilePath(AProject.FileName) + Path;
+          FormatStr := MacroParts.Values['Format'];
+          HistoryItem := GetPathLatestHistoryItem(Path);
+          if Assigned(HistoryItem) then
+          begin
+            if FormatStr <> '' then
+              DateStr := FormatDateTime(FormatStr, HistoryItem.Date)
+            else
+              DateStr := DateTimeToStr(HistoryItem.Date);
+          end
+          else
+            DateStr := '';
+          FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + '%s', [AMacros[I], DateStr]));
+        end
+        else
+        if MacroParts[0] = 'UNCOMMITTEDCHANGES' then
+        begin
+          ModificationPaths := TStringList.Create;
+          try
+            Paths := TStringList.Create;
+            try
+              Paths.Delimiter := ';';
+              Paths.StrictDelimiter := True;
+              Paths.DelimitedText := MacroParts.Values['Paths'];
+              if Paths.Count = 0 then
+                ModificationPaths.Add(RootDirectory(IDEClient.HgClient, ExtractFilePath(AProject.FileName)))
+              else
+              begin
+                for J := 0 to Pred(Paths.Count) do
+                begin
+                  Path := Paths[J];
+                  if Path = '' then
+                    Path := RootDirectory(IDEClient.HgClient, ExtractFilePath(AProject.FileName))
+                  else
+                  if Pos('.', Path) = 1 then
+                    Path := ExtractFilePath(AProject.FileName) + Path;
+                  if ModificationPaths.IndexOf(Path) = -1 then
+                    ModificationPaths.Add(Path);
+                end;
+              end;
+            finally
+              Paths.Free;
+            end;
+            FFoundModifications := False;
+            for J := 0 to Pred(ModificationPaths.Count) do
+            begin
+              IDEClient.HgClient.GetModifications(ModificationPaths[J], MacroStatusCallback);
+              if FFoundModifications then
+                Break;
+            end;
+          finally
+            ModificationPaths.Free;
+          end;
+          if FFoundModifications then
+            FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + MacroParts.Values['TrueStr'], [AMacros[I]]))
+          else
+            FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + MacroParts.Values['FalseStr'], [AMacros[I]]))
+        end;
+      end;
+    end;
+  finally
+    HistoryItems.Free;
+    MacroParts.Free;
+  end;
 end;
 
 procedure THgNotifier.ProjectManagerMenu(const Project: IOTAProject;

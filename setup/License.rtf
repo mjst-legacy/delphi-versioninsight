@@ -2,7 +2,7 @@
 {\colortbl ;\red0\green0\blue128;\red0\green0\blue255;}
 {\*\generator Msftedit 5.41.21.2509;}\viewkind4\uc1\pard\cf1\lang1033\b\f0\fs16 Please note: By using this software, you are agreeing to the terms of this license!\par
 \cf0\b0\par
-Version Insight Plus Beta 8\par
+Version Insight Plus Beta 9\par
 ===========================\par
 \par
 (c) 2011 - 2012 Uwe Schuster\par
@@ -35,7 +35,7 @@ built on top of potential OTA features in future RAD Studio releases.\par
 \par
 Features\par
 --------\par
-This special version is based on Version Insight revision 177 and\par
+This special version is based on Version Insight revision 189 and\par
 consists of the Subversion integration, the Mercurial integration, the\par
 Git integration and Live Blame.\par
 \par
@@ -83,6 +83,7 @@ o [History View] Added function "Revert Change"\par
 o [History View] Added Compressed Diff\par
   (see differ icons in the toolbar)\par
 o [Find in Files] Added "Where" entries "Search modified files in..."\par
+o [Build] Added feature "Version Info Update"\par
 \par
 \par
 Known issues\par
@@ -93,6 +94,24 @@ o I have seen my work IDE crashing with the App crash dialog when\par
 \par
 Changes\par
 -------\par
+2012/07/08\par
+o File States: Added support for IDE Insight/"View | Units..." and\par
+   "View | Forms..."\par
+o File States: Added support for DDevExtensions FileSelector dialog\par
+   (icons only)\par
+o [Git] File States: Fixed "Commit Date" in Object Inspector\par
+   (was in UTC)\par
+o Add To Version Control: Fixed unwanted system selection when\par
+   the menu item is "SVN Import"\par
+o [Svn] Added: Switch for Subversion\par
+o Live Blame: Fixed time stamps (was in UTC)\par
+o Live Blame: Information can now be updated by pressing SHIFT\par
+   while activating the button\par
+o Added new Plus feature "Version Info Update"\par
+o Internal: Removed JVCL change notifier that is not in use\par
+   anymore since Beta 4 and that makes the DesignIDEPro package\par
+   a lot smaller\par
+\par
 2012/03/13\par
 o [Svn] Added Blame Diff option\par
 o Commit: Tweak: Perform state flush after Revert, Add and\par

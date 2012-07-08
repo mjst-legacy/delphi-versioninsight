@@ -124,7 +124,8 @@ uses
   VerInsIDEBlameAddInOptions in '..\liveblame\VerInsIDEBlameAddInOptions.pas',
   VerInsBlameOptionsFrame in '..\liveblame\VerInsBlameOptionsFrame.pas' {frmVerInsBlameOptions: TFrame},
   VerInsBlameSettings in '..\liveblame\VerInsBlameSettings.pas',
-  VerInsIDEUtils in '..\verinsmisc\VerInsIDEUtils.pas';
+  VerInsIDEUtils in '..\verinsmisc\VerInsIDEUtils.pas',
+  VerInsIDEMacros in '..\verinsmisc\VerInsIDEMacros.pas';
 
 {$R *.res}
 

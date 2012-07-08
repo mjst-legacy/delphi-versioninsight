@@ -149,11 +149,11 @@ implementation
 
 uses
   {$IFDEF TOOLSPROAPI}
-  SvnIDEFileStates,
+  SvnIDEFileStates, VerInsIDEMacros,
   {$ENDIF TOOLSPROAPI}
   SysUtils, SvnIDEConst, SvnIDECommit, SvnIDEUpdate, SvnIDEClean, SvnIDELog,
   SvnIDEImport, SvnIDECheckout, SvnIDERepoBrowser, SvnIDEIcons, SvnIDEMerge,
-  SvnIDERevert, SvnIDESwitch;
+  SvnIDERevert, SvnIDESwitch, svn_client, Generics.Collections;
 
 const
   sSubversionName = 'embarcadero.subversion';
@@ -163,7 +163,8 @@ type
     const MenuContextList: IInterfaceList);
 
   TSvnNotifier = class(TInterfacedObject, IOTAVersionControlNotifier,
-    IOTAVersionControlNotifier150 {$IFDEF TOOLSPROAPI}, IOTAProVersionControlNotifier155, IOTAProVersionControlSearchFileFind{$ENDIF})
+    IOTAVersionControlNotifier150 {$IFDEF TOOLSPROAPI}, IOTAProVersionControlNotifier155,
+    IOTAProVersionControlSearchFileFind, IOTAProVersionControlVersionInfoNotifier{$ENDIF})
     { IOTANotifier }
     procedure AfterSave;
     procedure BeforeSave;
@@ -191,11 +192,23 @@ type
     {$IFDEF TOOLSPROAPI}
     function GetModifiedFiles(const AModifiedFiles: TStrings; AProgress: IOTAProSearchFileFindProgress): Boolean;
     {$ENDIF TOOLSPROAPI}
+    { IOTAProVersionControlVersionInfoNotifier }
+    function GetMacroCount: Integer;
+    {$IFDEF TOOLSPROAPI}
+    function GetMacros(AIndex: Integer): IOTAProMacro;
+    {$ENDIF TOOLSPROAPI}
+    procedure PrepareMacros(AProject: IOTAProject; AMacros: TStrings);
+    function ExpandMacros(const S: string): string;
     { Misc }
+    procedure InitMacroList;
     procedure InitNonFileIdentifiers;
+    procedure MacroStatusCallback(Sender: TObject; Item: TSvnItem; var Cancel: Boolean);
   protected
     FSvnIDEClient: TSvnIDEClient;
+    FMacros: TInterfaceList;
+    FMacroValues: TStringList;
     FNonFileIdentifiers: TStringList;
+    FFoundModifications: Boolean;
   public
     constructor Create(const SvnIDEClient: TSvnIDEClient);
     destructor Destroy; override;
@@ -474,13 +487,19 @@ constructor TSvnNotifier.Create(const SvnIDEClient: TSvnIDEClient);
 begin
   inherited Create;
   FSvnIDEClient := SvnIDEClient;
+  FMacros := TInterfaceList.Create;
+  FMacroValues := TStringList.Create;
+  FMacroValues.NameValueSeparator := #1;
   FNonFileIdentifiers := TStringList.Create;
   FNonFileIdentifiers.Sorted := True;
+  InitMacroList;
   InitNonFileIdentifiers;
 end;
 
 destructor TSvnNotifier.Destroy;
 begin
+  FMacros.Free;
+  FMacroValues.Free;
   FNonFileIdentifiers.Free;
   inherited Destroy;
 end;
@@ -488,6 +507,15 @@ end;
 procedure TSvnNotifier.Destroyed;
 begin
 
+end;
+
+function TSvnNotifier.ExpandMacros(const S: string): string;
+var
+  I: Integer;
+begin
+  Result := S;
+  for I := 0 to FMacroValues.Count - 1 do
+    Result := StringReplace(Result, '$(' + FMacroValues.Names[I] + ')', FMacroValues.ValueFromIndex[I], [rfReplaceAll]);
 end;
 
 procedure TSvnNotifier.FileBrowserMenu(const IdentList: TStrings;
@@ -532,7 +560,17 @@ begin
   Result := SubversionImageIndex;
 end;
 
+function TSvnNotifier.GetMacroCount: Integer;
+begin
+  Result := FMacros.Count;
+end;
+
 {$IFDEF TOOLSPROAPI}
+function TSvnNotifier.GetMacros(AIndex: Integer): IOTAProMacro;
+begin
+  Result := FMacros[AIndex] as IOTAProMacro;
+end;
+
 function TSvnNotifier.GetModifiedFiles(const AModifiedFiles: TStrings;
   AProgress: IOTAProSearchFileFindProgress): Boolean;
 
@@ -631,6 +669,36 @@ begin
   Result := sSubversionName;
 end;
 
+procedure TSvnNotifier.InitMacroList;
+{$IFDEF TOOLSPROAPI}
+var
+  Macro: TOTAMacro;
+begin
+  //TODO: Resource strings
+  FMacros.Add(TOTAMacro.Create('REVISION', 'Current working copy revision'));
+  Macro := FMacros.Last as TOTAMacro;
+  Macro.AddParameter('Path', 'Path (Default = working copy root; . = project dir)');
+  Macro.AddParameter('Divisor', 'Divisor to make the number smaller (Default = 1)');
+
+  FMacros.Add(TOTAMacro.Create('REVISIONAUTHOR', 'Current working copy revision author'));
+  Macro := FMacros.Last as TOTAMacro;
+  Macro.AddParameter('Path', 'Path (Default = working copy root; . = project dir)');
+
+  FMacros.Add(TOTAMacro.Create('REVISIONDATE', 'Current working copy revision date'));
+  Macro := FMacros.Last as TOTAMacro;
+  Macro.AddParameter('Path', 'Path (Default = working copy root; . = project dir)');
+  Macro.AddParameter('Format', 'Format');
+
+  FMacros.Add(TOTAMacro.Create('UNCOMMITTEDCHANGES', 'Working copy contains uncommitted changes'));
+  Macro := FMacros.Last as TOTAMacro;
+  Macro.AddParameter('Paths', 'Paths');
+  Macro.AddParameter('TrueStr', 'String if working copy contains uncommitted changes');
+  Macro.AddParameter('FalseStr', 'String if working copy does not contain uncommitted changes');
+{$ELSE ~TOOLSPROAPI}
+begin
+{$ENDIF ~TOOLSPROAPI}
+end;
+
 procedure TSvnNotifier.InitNonFileIdentifiers;
 begin
   FNonFileIdentifiers.Clear;
@@ -705,9 +773,200 @@ begin
   end;
 end;
 
+procedure TSvnNotifier.MacroStatusCallback(Sender: TObject; Item: TSvnItem; var Cancel: Boolean);
+begin
+  if (not AnsiSameText(ExtractFileExt(Item.PathName), '.dproj')) and
+    not (Item.TextStatus in [svnWcStatusNone, svnWcStatusUnversioned]) then
+  begin
+    Cancel := True;
+    FFoundModifications := True;
+  end;
+end;
+
 procedure TSvnNotifier.Modified;
 begin
 
+end;
+
+procedure TSvnNotifier.PrepareMacros(AProject: IOTAProject; AMacros: TStrings);
+var
+  HistoryItems: TObjectList<TSvnItem>;
+  MaxRevItems: TDictionary<string, Integer>;
+
+  function GetPathLatestHistoryItem(const APath: string; ARevision: Integer): TSvnHistoryItem;
+  var
+    I: Integer;
+    Found: Boolean;
+  begin
+    Result := nil;
+    Found := False;
+    for I := 0 to HistoryItems.Count - 1 do
+      if (HistoryItems[I].PathName = APath) and (HistoryItems[I].HistoryCount > 0) and
+        (HistoryItems[I].HistoryItems[0].Revision = ARevision) then
+      begin
+        Found := True;
+        if HistoryItems[I].HistoryCount > 0 then
+          Result := HistoryItems[I].HistoryItems[0]
+        else
+          Result := nil;
+      end;
+    if not Found then
+    begin
+      HistoryItems.Add(TSvnItem.Create(IDEClient.SvnClient, nil, APath));
+      HistoryItems.Last.LogFirstRev := ARevision;
+      HistoryItems.Last.LogLimit := 1;
+      if HistoryItems.Last.HistoryCount > 0 then
+        Result := HistoryItems.Last.HistoryItems[0]
+      else
+        Result := nil;
+    end;
+  end;
+
+  function GetMaxRevision(const APath: string): Integer;
+  begin
+    if not MaxRevItems.TryGetValue(APath, Result) then
+    begin
+      Result := IDEClient.SvnClient.GetMaxRevision(APath);
+      MaxRevItems.Add(APath, Result);
+    end;
+  end;
+
+var
+  I, J, MaxRev, Divisor: Integer;
+  Path: string;
+  DivisorStr, Author, DateStr, FormatStr: string;
+  MacroParts: TStringList;
+  Paths, ModificationPaths: TStringList;
+  HistoryItem: TSvnHistoryItem;
+begin
+  FMacroValues.Clear;
+  MacroParts := TStringList.Create;
+  HistoryItems := TObjectList<TSvnItem>.Create;
+  MaxRevItems := TDictionary<string, Integer>.Create;
+  try
+    MacroParts.Delimiter := '|';
+    MacroParts.StrictDelimiter := True;
+    for I := 0 to AMacros.Count - 1 do
+    begin
+      MacroParts.DelimitedText := AMacros[I];
+      if MacroParts.Count > 0 then
+      begin
+        if MacroParts[0] = 'REVISION' then
+        begin
+          Path := MacroParts.Values['Path'];
+          if Path = '' then
+            Path := RootDirectory(IDEClient.SvnClient, ExtractFilePath(AProject.FileName))
+          else
+          if Pos('.', Path) = 1 then
+            Path := ExtractFilePath(AProject.FileName) + Path;
+          DivisorStr := MacroParts.Values['Divisor'];
+          Divisor := StrToIntDef(DivisorStr, 1);
+          if Divisor = 0 then
+            Divisor := 1;
+          MaxRev := GetMaxRevision(Path);
+          FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + '%d', [AMacros[I], MaxRev div Divisor]));
+        end
+        else
+        if MacroParts[0] = 'REVISIONAUTHOR' then
+        begin
+          Path := MacroParts.Values['Path'];
+          if Path = '' then
+            Path := RootDirectory(IDEClient.SvnClient, ExtractFilePath(AProject.FileName))
+          else
+          if Pos('.', Path) = 1 then
+            Path := ExtractFilePath(AProject.FileName) + Path;
+          MaxRev := GetMaxRevision(Path);
+          HistoryItem := GetPathLatestHistoryItem(Path, MaxRev);
+          if Assigned(HistoryItem) then
+            Author := HistoryItem.Author
+          else
+            Author := '';
+          FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + '%s', [AMacros[I], Author]));
+        end
+        else
+        if MacroParts[0] = 'REVISIONDATE' then
+        begin
+          Path := MacroParts.Values['Path'];
+          if Path = '' then
+            Path := RootDirectory(IDEClient.SvnClient, ExtractFilePath(AProject.FileName))
+          else
+          if Pos('.', Path) = 1 then
+            Path := ExtractFilePath(AProject.FileName) + Path;
+          FormatStr := MacroParts.Values['Format'];
+          MaxRev := GetMaxRevision(Path);
+          HistoryItem := GetPathLatestHistoryItem(Path, MaxRev);
+          if Assigned(HistoryItem) then
+          begin
+            if FormatStr <> '' then
+              DateStr := FormatDateTime(FormatStr, HistoryItem.Time)
+            else
+              DateStr := DateTimeToStr(HistoryItem.Time);
+          end
+          else
+            DateStr := '';
+          FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + '%s', [AMacros[I], DateStr]));
+        end
+        else
+        if MacroParts[0] = 'UNCOMMITTEDCHANGES' then
+        begin
+          ModificationPaths := TStringList.Create;
+          try
+            Paths := TStringList.Create;
+            try
+              Paths.Delimiter := ';';
+              Paths.StrictDelimiter := True;
+              Paths.DelimitedText := MacroParts.Values['Paths'];
+              if Paths.Count = 0 then
+                ModificationPaths.Add(RootDirectory(IDEClient.SvnClient, ExtractFilePath(AProject.FileName)))
+              else
+              begin
+                for J := 0 to Pred(Paths.Count) do
+                begin
+                  Path := Paths[J];
+                  if Path = '' then
+                    Path := RootDirectory(IDEClient.SvnClient, ExtractFilePath(AProject.FileName))
+                  else
+                  if Pos('.', Path) = 1 then
+                    Path := ExtractFilePath(AProject.FileName) + Path;
+                  if ModificationPaths.IndexOf(Path) = -1 then
+                    ModificationPaths.Add(Path);
+                end;
+              end;
+            finally
+              Paths.Free;
+            end;
+            FFoundModifications := False;
+            for J := 0 to Pred(ModificationPaths.Count) do
+            begin
+              try
+                IDEClient.SvnClient.GetModifications(ModificationPaths[J], MacroStatusCallback, True);
+              except
+                on E: ESvnError do
+                begin
+                  if ESvnError(E).ErrorCode <> SVN_ERR_CANCELLED then
+                    raise;
+                end
+                else
+                  raise;
+              end;
+              if FFoundModifications then
+                Break;
+            end;
+          finally
+            ModificationPaths.Free;
+          end;
+          if FFoundModifications then
+            FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + MacroParts.Values['TrueStr'], [AMacros[I]]))
+          else
+            FMacroValues.Add(Format('%s' + FMacroValues.NameValueSeparator + MacroParts.Values['FalseStr'], [AMacros[I]]))
+        end;
+      end;
+    end;
+  finally
+    MaxRevItems.Free;
+    HistoryItems.Free;
+    MacroParts.Free;
+  end;
 end;
 
 procedure TSvnNotifier.ProjectManagerMenu(const Project: IOTAProject;

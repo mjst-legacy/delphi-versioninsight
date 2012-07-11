@@ -50,6 +50,7 @@ type
     Comment: TMemo;
     procedure RecentCommentClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure RecentCommentDblClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -87,6 +88,15 @@ begin
     Comment.Text := RecentComment.Items[RecentComment.ItemIndex]
   else
     Comment.Clear;
+end;
+
+procedure TRecentCommentsDialog.RecentCommentDblClick(Sender: TObject);
+begin
+  if RecentComment.ItemIndex <> -1 then
+  begin
+    Comment.Text := RecentComment.Items[RecentComment.ItemIndex];
+    Ok.Click;
+  end;
 end;
 
 end.

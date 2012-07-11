@@ -45,6 +45,7 @@ object RecentCommentsDialog: TRecentCommentsDialog
       ItemHeight = 13
       TabOrder = 0
       OnClick = RecentCommentClick
+      OnDblClick = RecentCommentDblClick
     end
   end
   object Panel2: TPanel

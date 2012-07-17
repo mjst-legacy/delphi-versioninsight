@@ -515,25 +515,30 @@ begin
     MoveToChangeList1.Add(MenuItem);
 
     //check if all selected items have the same changelist to hide it's menu item
-    SelectedChangeLists := TStringList.Create;
-    try
-      SelectedChangeLists.Sorted := True;
-      SelectedChangeLists.Duplicates := dupIgnore;
-      StartIdx := Files.Selected.Index;
-      for I := StartIdx to Files.Items.Count - 1 do
-        if Files.Items[I].Selected then
-        begin
-          SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
-          if not (SvnListViewItem.Directory or (SvnListViewItem.TextStatus in [svnWcStatusNone, svnWcStatusUnversioned])) then
-            SelectedChangeLists.Add(SvnListViewItem.ChangeList);
-        end;
-      if SelectedChangeLists.Count = 1 then
-        SelectedChangeList := SelectedChangeLists[0]
-      else
-        SelectedChangeList := '';
-    finally
-      SelectedChangeLists.Free;
-    end;
+    if Files.SelCount > 0 then
+    begin
+      SelectedChangeLists := TStringList.Create;
+      try
+        SelectedChangeLists.Sorted := True;
+        SelectedChangeLists.Duplicates := dupIgnore;
+        StartIdx := Files.Selected.Index;
+        for I := StartIdx to Files.Items.Count - 1 do
+          if Files.Items[I].Selected then
+          begin
+            SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+            if not (SvnListViewItem.Directory or (SvnListViewItem.TextStatus in [svnWcStatusNone, svnWcStatusUnversioned])) then
+              SelectedChangeLists.Add(SvnListViewItem.ChangeList);
+          end;
+        if SelectedChangeLists.Count = 1 then
+          SelectedChangeList := SelectedChangeLists[0]
+        else
+          SelectedChangeList := '';
+      finally
+        SelectedChangeLists.Free;
+      end;
+    end
+    else
+      SelectedChangeList := '';
 
     if SelectedChangeList <> cIgnoreOnCommitChangeList then
     begin
@@ -1171,8 +1176,8 @@ var
   SvnListViewItem: TSvnListViewItem;
   VisibleState: Boolean;
 begin
-  VisibleState := Assigned(FAddToChangeListCallBack);
-  if VisibleState and (Files.SelCount > 0) then
+  VisibleState := Assigned(FAddToChangeListCallBack) and (Files.SelCount > 0);
+  if VisibleState then
   begin
     VisibleState := False;
     StartIdx := Files.Selected.Index;
@@ -1381,8 +1386,8 @@ var
   SvnListViewItem: TSvnListViewItem;
   VisibleState: Boolean;
 begin
-  VisibleState := Assigned(FRemoveFromChangeListCallBack);
-  if VisibleState and (Files.SelCount > 0) then
+  VisibleState := Assigned(FRemoveFromChangeListCallBack) and (Files.SelCount > 0);
+  if VisibleState then
   begin
     VisibleState := False;
     StartIdx := Files.Selected.Index;

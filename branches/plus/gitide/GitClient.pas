@@ -27,7 +27,7 @@ unit GitClient;
 interface
 
 uses
-  Windows, SysUtils, Classes, Generics.Collections;
+  Windows, SysUtils, Classes, Generics.Collections, IOUtils;
 
 type
   TGitItem = class;
@@ -389,7 +389,7 @@ begin
 end;
 
 function Execute(const CommandLine: string; OutputLineCallback: TTextHandler; RawOutput: Boolean = False;
-  AbortPtr: PBoolean = nil; const CurrentDir: string = ''): Cardinal; overload; overload;
+  AbortPtr: PBoolean = nil; const CurrentDir: string = ''): Cardinal; overload;
 var
   Dummy: string;
 begin
@@ -832,9 +832,10 @@ end;
 function TGitClient.Commit(AFileList: TStringList; const AMessage: string; const AUser: string = ''): TGitError;
 var
   I, P, Res: Integer;
-  CmdLine, Output, S: string;
-  EncodedMessage: RawByteString;
+  CmdLine, Output, TempFileName, S: string;
   CurrentDir: string;
+  MS: TMemoryStream;
+  B: TBytes;
 begin
   Result := geUnknown;
   if AMessage = '' then
@@ -846,32 +847,50 @@ begin
     FLastCommitInfoHash := '';
     CurrentDir := ExtractFilePath(AFileList[0]);
 
-    //this seems to be the only way to pass the UTF-8 correctly
-    EncodedMessage := UTF8Encode(AMessage);
-    SetCodePage(EncodedMessage, 0, False);
-
-    CmdLine := GitExecutable + ' commit -m ' + AnsiQuotedStr(EncodedMessage, '"');
-    if AUser <> '' then
-      CmdLine := CmdLine + ' --author ' + AnsiQuotedStr(AUser, '"');
-    CmdLine := CmdLine + ' -o';
-    for I := 0 to AFileList.Count - 1 do
-      CmdLine := CmdLine + ' ' + StringReplace(QuoteFileName(AFileList[I]), '\', '/', [rfReplaceAll]);
-    Res := Execute(CmdLine, Output, False, nil, CurrentDir);
-    if Res = 0 then
+    if Pos('"', AMessage) > 0 then
     begin
-      if Pos('Aborting commit due to empty commit message', Output) > 0 then
-        Result := geEmptyCommitMessage
-      else
-      if Pos('[', Output) = 1 then
-      begin
-        Result := geSuccess;
-        P := Pos(']', Output);
-        FLastCommitInfoHash := Copy(Output, P - 7, 7);
-        FLastCommitInfoBranch := Copy(Output, 1, P - 9);
-        P := Pos('[', FLastCommitInfoBranch);
-        if P > 0 then
-          Delete(FLastCommitInfoBranch, 1, P);
+      TempFileName := TPath.GetTempFileName;
+      MS := TMemoryStream.Create;
+      try
+        B := TEncoding.UTF8.GetBytes(AMessage);
+        MS.Write(B[Low(B)], Length(B));
+        MS.SaveToFile(TempFileName);
+      finally
+        MS.Free;
       end;
+      CmdLine := GitExecutable + ' commit -F ' + QuoteFileName(TempFileName);
+    end
+    else
+    begin
+      TempFileName := '';
+      CmdLine := GitExecutable + ' commit -m ' + AnsiQuotedStr(AMessage, '"');
+    end;
+    try
+      if AUser <> '' then
+        CmdLine := CmdLine + ' --author ' + AnsiQuotedStr(AUser, '"');
+      CmdLine := CmdLine + ' -o';
+      for I := 0 to AFileList.Count - 1 do
+        CmdLine := CmdLine + ' ' + StringReplace(QuoteFileName(AFileList[I]), '\', '/', [rfReplaceAll]);
+      Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+      if Res = 0 then
+      begin
+        if Pos('Aborting commit due to empty commit message', Output) > 0 then
+          Result := geEmptyCommitMessage
+        else
+        if Pos('[', Output) = 1 then
+        begin
+          Result := geSuccess;
+          P := Pos(']', Output);
+          FLastCommitInfoHash := Copy(Output, P - 7, 7);
+          FLastCommitInfoBranch := Copy(Output, 1, P - 9);
+          P := Pos('[', FLastCommitInfoBranch);
+          if P > 0 then
+            Delete(FLastCommitInfoBranch, 1, P);
+        end;
+      end;
+    finally
+      if TempFileName <> '' then
+        DeleteFile(TempFileName);
     end;
   end;
 end;

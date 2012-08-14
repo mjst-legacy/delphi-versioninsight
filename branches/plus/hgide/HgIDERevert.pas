@@ -61,9 +61,10 @@ end;
 
 procedure TFileRevertHgMenu.Execute(const MenuContextList: IInterfaceList);
 var
-  I, AdditionalFileCount: Integer;
+  I, J, AdditionalFileCount: Integer;
   MenuContext: IOTAMenuContext;
-  FileList: TStringList;
+  ProjectContect: IOTAProjectMenuContext;
+  FileList, AssociatedFiles: TStringList;
   S: string;
   Module: IOTAModule;
 begin
@@ -71,7 +72,25 @@ begin
   try
     for I := 0 to MenuContextList.Count - 1 do
       if Supports(MenuContextList[I], IOTAMenuContext, MenuContext) then
+      begin
         FileList.Add(MenuContext.Ident);
+        AssociatedFiles := TStringList.Create;
+        try
+          if Supports(MenuContext, IOTAProjectMenuContext, ProjectContect) and Assigned(ProjectContect.Project) then
+            ProjectContect.Project.GetAssociatedFiles(MenuContext.Ident, AssociatedFiles)
+          else
+          begin
+            Module := (BorlandIDEServices as IOTAModuleServices).FindModule(MenuContext.Ident);
+            if Assigned(Module) then
+              Module.GetAssociatedFilesFromModule(AssociatedFiles);
+          end;
+          for J := 0 to AssociatedFiles.Count - 1 do
+            if FileList.IndexOf(AssociatedFiles[J]) = -1 then
+              FileList.Add(AssociatedFiles[J]);
+        finally
+          AssociatedFiles.Free;
+        end;
+      end;
     if FileList.Count > 0 then
     begin
       S := sRevertCheck;

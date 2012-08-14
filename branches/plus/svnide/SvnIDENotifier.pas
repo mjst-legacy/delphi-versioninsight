@@ -41,7 +41,7 @@ procedure RegisterFileNotification;
 implementation
 
 uses SysUtils, ToolsAPI, Classes, Generics.Collections, SvnIDEClient, Dialogs,
-  svn_client, SvnClient, IOUtils;
+  svn_client, SvnClient, IOUtils, SvnIDEFileStates;
 
 type
   TProjectIndex = class
@@ -306,7 +306,10 @@ begin
     try
       IDEClient.SvnClient.GetModifications(FileName, StatusCallback, false);
       if FStatus = svnWcStatusUnversioned then
+      begin
         IDEClient.SvnClient.Add(FileName);
+        FlushFileState(FileName);
+      end;
     except
       // if we can not add silently fail.
     end;
@@ -344,6 +347,8 @@ begin
           try
             Files.Add(InitialName);
             IDEClient.SvnClient.Move(Files, CurrentName);
+            FlushFileState(InitialName);
+            FlushFileState(CurrentName);
           finally
             Files.Free;
           end;

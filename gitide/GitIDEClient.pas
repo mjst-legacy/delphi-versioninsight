@@ -35,6 +35,7 @@ type
     FAlternativeCommitLayout: Boolean;
     FClearFileStatesAfterCloseAll: Boolean;
     FDeleteBackupFilesAfterCommit: Boolean;
+    FKeepCommitViewOpenAfterCommit: Boolean;
   public
     constructor Create;
     procedure Load;
@@ -42,6 +43,7 @@ type
     property AlternativeCommitLayout: Boolean read FAlternativeCommitLayout write FAlternativeCommitLayout;
     property ClearFileStatesAfterCloseAll: Boolean read FClearFileStatesAfterCloseAll write FClearFileStatesAfterCloseAll;
     property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
+    property KeepCommitViewOpenAfterCommit: Boolean read FKeepCommitViewOpenAfterCommit write FKeepCommitViewOpenAfterCommit;
   end;
 
   TGitIDEClient = class(TObject)
@@ -86,6 +88,7 @@ const
   cAlternativeCommitLayout = 'AlternativeCommitLayout';
   cClearFileStatesAfterCloseAll = 'ClearFileStatesAfterCloseAll';
   cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
+  cKeepCommitViewOpenAfterCommit = 'KeepCommitViewOpenAfterCommit';
 
 procedure Register;
 begin
@@ -104,6 +107,7 @@ begin
   FAlternativeCommitLayout := False;
   FClearFileStatesAfterCloseAll := False;
   FDeleteBackupFilesAfterCommit := False;
+  FKeepCommitViewOpenAfterCommit := False;
   Load;
 end;
 
@@ -127,6 +131,9 @@ begin
     Key := cDeleteBackupFilesAfterCommit;
     if Reg.ValueExists(Key) then
       FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
+    Key := cKeepCommitViewOpenAfterCommit;
+    if Reg.ValueExists(Key) then
+      FKeepCommitViewOpenAfterCommit := Reg.ReadBool(Key);
   finally
     Reg.Free;
   end;
@@ -144,6 +151,7 @@ begin
     Reg.WriteBool(cAlternativeCommitLayout, FAlternativeCommitLayout);
     Reg.WriteBool(cClearFileStatesAfterCloseAll, FClearFileStatesAfterCloseAll);
     Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
+    Reg.WriteBool(cKeepCommitViewOpenAfterCommit, FKeepCommitViewOpenAfterCommit);
   finally
     Reg.Free;
   end;

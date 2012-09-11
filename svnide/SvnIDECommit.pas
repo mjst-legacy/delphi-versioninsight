@@ -584,6 +584,7 @@ begin
       finally
         RecentComments.Free;
       end;
+      FSvnCommitFrame.KeepOpenAfterCommit := IDEClient.Options.KeepCommitViewOpenAfterCommit;
     finally
       FSvnCommitFrame.EndUpdate;
     end;

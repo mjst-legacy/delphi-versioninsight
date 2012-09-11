@@ -53,6 +53,7 @@ type
     IgnoreSpace: TRadioButton;
     IgnoreAllSpace: TRadioButton;
     cbClearFileStatesAfterCloseAll: TCheckBox;
+    cbKeepCommitViewOpenAfterCommit: TCheckBox;
   private
     { Private declarations }
   public

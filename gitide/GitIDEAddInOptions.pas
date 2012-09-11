@@ -83,6 +83,7 @@ begin
     IDEClient.Options.AlternativeCommitLayout := FFrame.cbAlternativeCommitLayout.Checked;
     IDEClient.Options.ClearFileStatesAfterCloseAll := FFrame.cbClearFileStatesAfterCloseAll.Checked;
     IDEClient.Options.DeleteBackupFilesAfterCommit := FFrame.cbDeleteBackupFilesAfterCommit.Checked;
+    IDEClient.Options.KeepCommitViewOpenAfterCommit := FFrame.cbKeepCommitViewOpenAfterCommit.Checked;
     IDEClient.Options.Save;
   end;
 end;
@@ -103,6 +104,7 @@ begin
   {$ENDIF ~TOOLSPROAPI}
   FFrame.cbClearFileStatesAfterCloseAll.Checked := IDEClient.Options.ClearFileStatesAfterCloseAll;
   FFrame.cbDeleteBackupFilesAfterCommit.Checked := IDEClient.Options.DeleteBackupFilesAfterCommit;
+  FFrame.cbKeepCommitViewOpenAfterCommit.Checked := IDEClient.Options.KeepCommitViewOpenAfterCommit;
 end;
 
 function TGitAddInOptions.GetArea: string;

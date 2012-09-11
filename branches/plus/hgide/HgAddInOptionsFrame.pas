@@ -53,6 +53,7 @@ type
     cbDeleteBackupFilesAfterCommit: TCheckBox;
     cbAlternativeCommitLayout: TCheckBox;
     cbClearFileStatesAfterCloseAll: TCheckBox;
+    cbKeepCommitViewOpenAfterCommit: TCheckBox;
     procedure SpeedButton1Click(Sender: TObject);
   private
     { Private declarations }

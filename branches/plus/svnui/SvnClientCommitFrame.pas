@@ -165,6 +165,7 @@ type
     FChangesLists: TStringList;
     FChangesListIgnoreOnCommitGroupID: Integer;
     FUpdateCount: Integer;
+    FKeepOpenAfterCommit: Boolean;
     procedure CMRelease(var Message: TMessage); message CM_RELEASE;
     procedure DoRefresh;
     function GetGroupID(const AChangeList: string): Integer;
@@ -199,6 +200,7 @@ type
     property CommitCallBack: TCommitCallBack read FCommitCallBack write FCommitCallBack;
     property DiffCallBack: TDiffCallBack read FDiffCallBack write FDiffCallBack;
     property FileColorCallBack: TFileColorCallBack read FFileColorCallBack write FFileColorCallBack;
+    property KeepOpenAfterCommit: Boolean read FKeepOpenAfterCommit write FKeepOpenAfterCommit;
     property RevertCallBack: TRevertCallBack read FRevertCallBack write FRevertCallBack;
     property ResolveCallBack: TResolveCallBack read FResolveCallBack write FResolveCallBack;
     property GetFileStatusCallBack: TGetFileStatusCallBack read FGetFileStatusCallBack write FGetFileStatusCallBack;
@@ -457,7 +459,20 @@ var
   CommitList, AddList: TStringList;
   I, Idx: Integer;
   SortedIndexList: TList<Integer>;
+  KeepOpen: Boolean;
 begin
+  KeepOpen := FKeepOpenAfterCommit;
+  if KeepOpen then
+  begin
+    KeepOpen := False;
+    for I := 0 to FItemList.Count - 1 do
+      if FItemList[I].Visible and (FItemList[I].ChangeList <> cIgnoreOnCommitChangeList) and
+        not FItemList[I].Checked then
+      begin
+        KeepOpen := True;
+        Break;
+      end;
+  end;
   if Comment.Text <> '' then
   begin
     Idx := FRecentComments.IndexOf(Comment.Text);
@@ -492,7 +507,13 @@ begin
     AddList.Free;
     CommitList.Free;
   end;
-  PostMessage(Handle, CM_Release, 0, 0);
+  if KeepOpen then
+  begin
+    Comment.Clear;
+    DoRefresh;
+  end
+  else
+    PostMessage(Handle, CM_Release, 0, 0)
 end;
 
 procedure TSvnCommitFrame.CommitMenuPopup(Sender: TObject);

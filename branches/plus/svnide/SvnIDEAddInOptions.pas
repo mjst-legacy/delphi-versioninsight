@@ -71,6 +71,7 @@ begin
     IDEClient.Options.AlternativeCommitLayout := FFrame.cbAlternativeCommitLayout.Checked;
     IDEClient.Options.ClearFileStatesAfterCloseAll := FFrame.cbClearFileStatesAfterCloseAll.Checked;
     IDEClient.Options.DeleteBackupFilesAfterCommit := FFrame.cbDeleteBackupFilesAfterCommit.Checked;
+    IDEClient.Options.KeepCommitViewOpenAfterCommit := FFrame.cbKeepCommitViewOpenAfterCommit.Checked;
     IDEClient.Options.BlameOptions.IgnoreEOL := FFrame.IgnoreEOL.Checked;
     IDEClient.Options.BlameOptions.IgnoreSpace := FFrame.IgnoreSpace.Checked;
     IDEClient.Options.BlameOptions.IgnoreSpaceAll := FFrame.IgnoreAllSpace.Checked;
@@ -94,6 +95,7 @@ begin
   {$ENDIF ~TOOLSPROAPI}
   FFrame.cbClearFileStatesAfterCloseAll.Checked := IDEClient.Options.ClearFileStatesAfterCloseAll;
   FFrame.cbDeleteBackupFilesAfterCommit.Checked := IDEClient.Options.DeleteBackupFilesAfterCommit;
+  FFrame.cbKeepCommitViewOpenAfterCommit.Checked := IDEClient.Options.KeepCommitViewOpenAfterCommit;
   FFrame.IgnoreEOL.Checked := IDEClient.Options.BlameOptions.IgnoreEOL;
   if IDEClient.Options.BlameOptions.IgnoreSpaceAll then
     FFrame.IgnoreAllSpace.Checked := True

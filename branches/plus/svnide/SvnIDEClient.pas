@@ -49,6 +49,7 @@ type
     FBlameOptions: TSvnBlameOptions;
     FClearFileStatesAfterCloseAll: Boolean;
     FDeleteBackupFilesAfterCommit: Boolean;
+    FKeepCommitViewOpenAfterCommit: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -58,6 +59,7 @@ type
     property BlameOptions: TSvnBlameOptions read FBlameOptions;
     property ClearFileStatesAfterCloseAll: Boolean read FClearFileStatesAfterCloseAll write FClearFileStatesAfterCloseAll;
     property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
+    property KeepCommitViewOpenAfterCommit: Boolean read FKeepCommitViewOpenAfterCommit write FKeepCommitViewOpenAfterCommit;
   end;
 
   TSvnIDEClient = class
@@ -128,6 +130,7 @@ const
  cAlternativeCommitLayout = 'AlternativeCommitLayout';
  cClearFileStatesAfterCloseAll = 'ClearFileStatesAfterCloseAll';
  cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
+ cKeepCommitViewOpenAfterCommit = 'KeepCommitViewOpenAfterCommit';
  cBlameIgnoreEOL = 'BlameIgnoreEOL';
  cBlameCompareSpaces = 'BlameCompareSpaces';
 
@@ -189,6 +192,7 @@ begin
   FBlameOptions := TSvnBlameOptions.Create;
   FClearFileStatesAfterCloseAll := False;
   FDeleteBackupFilesAfterCommit := False;
+  FKeepCommitViewOpenAfterCommit := False;
   Load;
 end;
 
@@ -219,6 +223,9 @@ begin
     Key := cDeleteBackupFilesAfterCommit;
     if Reg.ValueExists(Key) then
       FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
+    Key := cKeepCommitViewOpenAfterCommit;
+    if Reg.ValueExists(Key) then
+      FKeepCommitViewOpenAfterCommit := Reg.ReadBool(Key);
 
     Key := cBlameIgnoreEOL;
     if Reg.ValueExists(Key) then
@@ -248,6 +255,7 @@ begin
     Reg.WriteBool(cAlternativeCommitLayout, FAlternativeCommitLayout);
     Reg.WriteBool(cClearFileStatesAfterCloseAll, FClearFileStatesAfterCloseAll);
     Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
+    Reg.WriteBool(cKeepCommitViewOpenAfterCommit, FKeepCommitViewOpenAfterCommit);
 
     Reg.WriteBool(cBlameIgnoreEOL, FBlameOptions.IgnoreEOL);
     if FBlameOptions.IgnoreSpaceAll then

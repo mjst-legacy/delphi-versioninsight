@@ -37,6 +37,8 @@ contains
   VerInsLiveBlame in 'VerInsLiveBlame.pas',
   VerInsIDEBlameAddInOptions in 'VerInsIDEBlameAddInOptions.pas',
   VerInsBlameOptionsFrame in 'VerInsBlameOptionsFrame.pas' {frmVerInsBlameOptions: TFrame},
-  VerInsBlameSettings in 'VerInsBlameSettings.pas';
+  VerInsBlameSettings in 'VerInsBlameSettings.pas',
+  VerInsLiveBlameTypes in 'VerInsLiveBlameTypes.pas',
+  VerInsIDEDockInfo in 'VerInsIDEDockInfo.pas' {fmLiveBlameInfo};
 
 end.

@@ -125,7 +125,9 @@ uses
   VerInsBlameOptionsFrame in '..\liveblame\VerInsBlameOptionsFrame.pas' {frmVerInsBlameOptions: TFrame},
   VerInsBlameSettings in '..\liveblame\VerInsBlameSettings.pas',
   VerInsIDEUtils in '..\verinsmisc\VerInsIDEUtils.pas',
-  VerInsIDEMacros in '..\verinsmisc\VerInsIDEMacros.pas';
+  VerInsIDEMacros in '..\verinsmisc\VerInsIDEMacros.pas',
+  VerInsLiveBlameTypes in '..\liveblame\VerInsLiveBlameTypes.pas',
+  VerInsIDEDockInfo in '..\liveblame\VerInsIDEDockInfo.pas' {fmLiveBlameInfo};
 
 {$R *.res}
 

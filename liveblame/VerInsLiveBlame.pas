@@ -70,7 +70,8 @@ uses
   {$IFDEF SVNINTERNAL}
   SvnIDEClient, SvnClient, SvnIDETypes,
   {$ENDIF SVNINTERNAL}
-  VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings, Registry;
+  VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings, Registry, VerInsLiveBlameTypes,
+  Rtti, Events, VerInsIDEDockInfo;
 
 procedure Register;
 begin
@@ -160,37 +161,6 @@ const
   WM_BLAME_UPDATE = WM_USER + 2;
 
 type
-  TJVCSLineHistoryRevision = class(TObject)
-  private
-    FDate: TDateTime;
-    FDateStr: string;
-    FRevisionStr: string;
-    FOrgUserStr: string;
-    FUserStr: string;
-    FComment: string;
-  public
-    property Date: TDateTime read FDate;
-    property DateStr: string read FDateStr;
-    property OrgUserStr: string read FOrgUserStr;
-    property RevisionStr: string read FRevisionStr;
-    property UserStr: string read FUserStr;
-    property Comment: string read FComment;
-  end;
-
-  TRevisionColor = class(TObject)
-  private
-    FDateColor: TColor;
-    FRevisionColor: TColor;
-    FLineHistoryRevision: TJVCSLineHistoryRevision;
-    FUserColor: TColor;
-  public
-    constructor Create(ALineHistoryRevision: TJVCSLineHistoryRevision);
-    property DateColor: TColor read FDateColor write FDateColor;
-    property RevisionColor: TColor read FRevisionColor write FRevisionColor;
-    property LineHistoryRevision: TJVCSLineHistoryRevision read FLineHistoryRevision;
-    property UserColor: TColor read FUserColor write FUserColor;
-  end;
-
   TRevisionRectangle = class(TObject)
   private
     FRect: TRect;
@@ -241,17 +211,6 @@ type
     procedure Add(APoint: TPoint; ADeletedLines: TDeletedLines);
     function Find(AX, AY: Integer): Integer;
   end;
-
-{ TRevisionColor }
-
-constructor TRevisionColor.Create(ALineHistoryRevision: TJVCSLineHistoryRevision);
-begin
-  inherited Create;
-  FDateColor := clNone;
-  FRevisionColor := clNone;
-  FLineHistoryRevision := ALineHistoryRevision;
-  FUserColor := clNone;
-end;
 
 { TRevisionRectangle }
 
@@ -559,6 +518,7 @@ type
     FMenuItem2: TMenuItem;
     FMenuItem3: TMenuItem;
     FConfigMenuItem: TMenuItem;
+    FShowInfoFormMenuItem: TMenuItem;
     FLastPresetTimeStamp: TDateTime;
     FModificationColorFile: TColor;
     FModificationColorBuffer: TColor;
@@ -593,6 +553,8 @@ type
     procedure HandlePopupMenuPopup(Sender: TObject);
     procedure SetPreset(APresetID: Integer);
     function UpdateModificationColors: Boolean;
+    procedure InstallLineChangeHook;
+    procedure ChangeLineEvent(Sender: TObject);
   protected
     procedure SetEnabled(AValue: Boolean); override;
   public
@@ -999,12 +961,12 @@ begin
   for I := 0 to FRevisions.Count - 1 do
   begin
     LHRevision := FRevisions[I];
-    Idx := ASettings.UserSettingsList.IndexOfUser(LHRevision.FOrgUserStr);
+    Idx := ASettings.UserSettingsList.IndexOfUser(LHRevision.OrgUserStr);
     if Idx <> -1 then
-      LHRevision.FUserStr := ASettings.UserSettingsList[Idx].VisibleName
+      LHRevision.UserStr := ASettings.UserSettingsList[Idx].VisibleName
     else
-      LHRevision.FUserStr := LHRevision.FOrgUserStr;
-    LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, LHRevision.FDate);
+      LHRevision.UserStr := LHRevision.OrgUserStr;
+    LHRevision.DateStr := GetDateStr(ASettings.DateFormat, LHRevision.Date);
   end;
 end;
 
@@ -1037,30 +999,30 @@ begin
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
         LHRevision := FRevisions.Last;
         RevisionsDict.Add(FSvnItem.HistoryItems[I].Revision, LHRevision);
-        LHRevision.FRevisionStr := IntToStr(FSvnItem.HistoryItems[I].Revision);
-        LHRevision.FOrgUserStr := FSvnItem.HistoryItems[I].Author;
+        LHRevision.RevisionStr := IntToStr(FSvnItem.HistoryItems[I].Revision);
+        LHRevision.OrgUserStr := FSvnItem.HistoryItems[I].Author;
         Idx := ASettings.UserSettingsList.IndexOfUser(FSvnItem.HistoryItems[I].Author);
         if Idx <> -1 then
-          LHRevision.FUserStr := ASettings.UserSettingsList[Idx].VisibleName
+          LHRevision.UserStr := ASettings.UserSettingsList[Idx].VisibleName
         else
-          LHRevision.FUserStr := FSvnItem.HistoryItems[I].Author;
-        LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, FSvnItem.HistoryItems[I].Time);
-        LHRevision.FDate := FSvnItem.HistoryItems[I].Time;
-        LHRevision.FComment := TrimRight(FSvnItem.HistoryItems[I].LogMessage);
+          LHRevision.UserStr := FSvnItem.HistoryItems[I].Author;
+        LHRevision.DateStr := GetDateStr(ASettings.DateFormat, FSvnItem.HistoryItems[I].Time);
+        LHRevision.Date := FSvnItem.HistoryItems[I].Time;
+        LHRevision.Comment := TrimRight(FSvnItem.HistoryItems[I].LogMessage);
       end;
       FRevisions.Add(TJVCSLineHistoryRevision.Create);
       FBufferRevision := FRevisions.Last;
-      FBufferRevision.FRevisionStr := 'Buff';
-      FBufferRevision.FUserStr := 'User';//TODO:
+      FBufferRevision.RevisionStr := 'Buff';
+      FBufferRevision.UserStr := 'User';//TODO:
 
-      FBufferRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
-      FBufferRevision.FDate := Now;
+      FBufferRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
+      FBufferRevision.Date := Now;
       FRevisions.Add(TJVCSLineHistoryRevision.Create);
       FFileRevision := FRevisions.Last;
-      FFileRevision.FRevisionStr := 'File';
-      FFileRevision.FUserStr := 'User';//TODO:
-      FFileRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
-      FFileRevision.FDate := Now;
+      FFileRevision.RevisionStr := 'File';
+      FFileRevision.UserStr := 'User';//TODO:
+      FFileRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
+      FFileRevision.Date := Now;
       for I := 1 to FSvnItem.HistoryItems[0].BlameCount do
       begin
         if not RevisionsDict.TryGetValue(FSvnItem.HistoryItems[0].BlameItems[I].Revision, LHRevision) then
@@ -1152,30 +1114,30 @@ begin
           FRevisions.Add(TJVCSLineHistoryRevision.Create);
           LHRevision := FRevisions.Last;
           RevisionsDict.Add(FFileHistory.Ident[I], LHRevision);
-          LHRevision.FRevisionStr := FFileHistory.Ident[I];
-          LHRevision.FOrgUserStr := FFileHistory.Author[I];
+          LHRevision.RevisionStr := FFileHistory.Ident[I];
+          LHRevision.OrgUserStr := FFileHistory.Author[I];
           Idx := ASettings.UserSettingsList.IndexOfUser(FFileHistory.Author[I]);
           if Idx <> -1 then
-            LHRevision.FUserStr := ASettings.UserSettingsList[Idx].VisibleName
+            LHRevision.UserStr := ASettings.UserSettingsList[Idx].VisibleName
           else
-            LHRevision.FUserStr := FFileHistory.Author[I];
-          LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, UTCToTzDateTime(FFileHistory.Date[I]));
-          LHRevision.FDate := UTCToTzDateTime(FFileHistory.Date[I]);
-          LHRevision.FComment := TrimRight(FFileHistory.Comment[I]);
+            LHRevision.UserStr := FFileHistory.Author[I];
+          LHRevision.DateStr := GetDateStr(ASettings.DateFormat, UTCToTzDateTime(FFileHistory.Date[I]));
+          LHRevision.Date := UTCToTzDateTime(FFileHistory.Date[I]);
+          LHRevision.Comment := TrimRight(FFileHistory.Comment[I]);
         end;
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
         FBufferRevision := FRevisions.Last;
-        FBufferRevision.FRevisionStr := 'Buff';
-        FBufferRevision.FUserStr := 'User';//TODO:
+        FBufferRevision.RevisionStr := 'Buff';
+        FBufferRevision.UserStr := 'User';//TODO:
 
-        FBufferRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
-        FBufferRevision.FDate := Now;
+        FBufferRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
+        FBufferRevision.Date := Now;
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
         FFileRevision := FRevisions.Last;
-        FFileRevision.FRevisionStr := 'File';
-        FFileRevision.FUserStr := 'User';//TODO:
-        FFileRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
-        FFileRevision.FDate := Now;
+        FFileRevision.RevisionStr := 'File';
+        FFileRevision.UserStr := 'User';//TODO:
+        FFileRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
+        FFileRevision.Date := Now;
         if FAnnotationLineProviderHelperUpdateRequired then
         begin
           FAnnotationLineProviderHelper.Clear;
@@ -1437,6 +1399,224 @@ begin
   end;
 
   Result := CallNextHookEx(GetMsgHook, nCode, wParam, lParam);
+end;
+
+type
+  TEditControlAddresses = class(TObject)
+  private
+    class var FEvCaretLineChangeOffset: Integer;
+    class var FLoaded: Boolean;
+    class var FLinesOffset: Integer;
+    class function ReadAddresses(AClass: TClass): Boolean;
+    class function ReadOffsets(AClass: TClass): Boolean;
+  end;
+
+{ TEditControlAddresses }
+
+class function TEditControlAddresses.ReadAddresses(AClass: TClass): Boolean;
+begin
+  Result := False;
+  if not FLoaded then
+  begin
+    FLoaded := True;
+    if ReadOffsets(AClass) then
+      Result := True;
+  end;
+end;
+
+class function TEditControlAddresses.ReadOffsets(AClass: TClass): Boolean;
+var
+  Ctx: TRttiContext;
+  RttiType: TRttiType;
+  F: TRttiField;
+begin
+  FEvCaretLineChangeOffset := -1;
+  FLinesOffset := -1;
+  Ctx := TRttiContext.Create;
+  try
+    RttiType := Ctx.GetType(AClass);
+    if Assigned(RttiType) then
+    begin
+      for F in RttiType.GetFields do
+        if F.Name = 'FEvCaretLineChange' then
+          FEvCaretLineChangeOffset := F.Offset
+        else
+        if F.Name = 'FLines' then
+          FLinesOffset := F.Offset;
+    end;
+    Result := (FEvCaretLineChangeOffset > 0) and (FLinesOffset > 0);
+  finally
+    Ctx.Free;
+  end;
+end;
+
+function GetMethodName(AEditControl: TObject; AInfoLine, ALastStopLine: Integer; var AMethodStartLine: Integer): string;
+var
+  I, P, L, MethodLine: Integer;
+  O: TObject;
+  Strings: TStrings;
+  S: string;
+begin
+  Result := '';
+  AMethodStartLine := AInfoLine;
+  TEditControlAddresses.ReadAddresses(AEditControl.ClassType);
+  if TEditControlAddresses.FLinesOffset > 0 then
+  begin
+    O := TObject(PDWord(Integer(AEditControl) + TEditControlAddresses.FLinesOffset)^);
+    if O is TStrings then
+    begin
+      Strings := TStrings(O);
+      if Strings.Count > AInfoLine - 1 then
+      begin
+        MethodLine := -1;
+        L := 0;
+        P := 0;
+        for I := AInfoLine downto ALastStopLine do
+        begin
+          S := AnsiUpperCase(Strings[I - 1]);
+          P := Pos('PROCEDURE', S);
+          if P > 0 then
+            L := Length('PROCEDURE');
+          if P = 0 then
+          begin
+            P := Pos('FUNCTION', S);
+            if P > 0 then
+              L := Length('FUNCTION');
+          end;
+          if P = 0 then
+          begin
+            P := Pos('CONSTRUCTOR', S);
+            if P > 0 then
+              L := Length('CONSTRUCTOR');
+          end;
+          if P = 0 then
+          begin
+            P := Pos('DESTRUCTOR', S);
+            if P > 0 then
+              L := Length('DESTRUCTOR');
+          end;
+          if P > 0 then
+          begin
+            MethodLine := I;
+            AMethodStartLine := I;
+            Break;
+          end;
+        end;
+        if (MethodLine > 0) and (P > 0) and (L > 0) then
+        begin
+          S := Strings[MethodLine - 1];
+          Delete(S, 1, P + L - 1);
+          for I := MethodLine + 1 to AInfoLine do
+            S := S + Strings[I - 1];
+          P := 0;
+          L := Length(S);
+          for I := 1 to L do
+            if CharInSet(S[I], ['(', ';', ':']) then
+            begin
+              P := I;
+              Break;
+            end;
+          if P > 0 then
+            Delete(S, P, MaxInt);
+          Result := Trim(S);
+        end;
+      end;
+    end;
+  end;
+end;
+
+procedure TLiveBlameEditorPanel.ChangeLineEvent(Sender: TObject);
+var
+  EditView: IOTAEditView;
+  EditPos: TOTAEditPos;
+  Revision, MethodRevision: TJVCSLineHistoryRevision;
+  Line, ZeroLine: Integer;
+  MR: IOTAModuleRegions;
+  R: TOTARegions;
+  Module: IOTAModule;
+  C, I, J, RevIdx, MaxRevIdx, LastStopLine, StartLine: Integer;
+  LiveBlameInformation: TLiveBlameInformation;
+  MethodSummary: TJVCSLineHistorySummary;
+  EC: TObject;
+  MethodName: string;
+begin
+  Revision := nil;
+  Line := -1;
+  EditView := (BorlandIDEServices as IOTAEditorServices).TopView;
+  if Assigned(EditView) then
+  begin
+    EditPos := EditView.CursorPos;
+    Line := EditPos.Line;
+    ZeroLine := Line - 1;
+    if (ZeroLine >= 0) and (ZeroLine < FLiveBlameData.FLines.Count) then
+      Revision := FLiveBlameData.FLines[ZeroLine];
+  end;
+
+  MethodName := '';
+  LiveBlameInformation := TLiveBlameInformation.Create;
+  MethodSummary := TJVCSLineHistorySummary.Create;
+  try
+    if Assigned(Revision) then
+    begin
+      MethodRevision := nil;
+      MaxRevIdx := -1;
+      Module := (BorlandIDEServices as IOTAEditorServices).TopBuffer.Module;
+      if Supports(Module, IOTAModuleRegions, MR) then
+      begin
+        R := MR.GetRegions(Module.FileName);
+        LastStopLine := 1;
+        EC := GetEditControl;
+        for C := Low(R) to High(R) do
+          if R[C].RegionKind = rkMethod then
+          begin
+            StartLine := R[C].Start.Line;
+            if Assigned(EC) then
+              MethodName := GetMethodName(EC, R[C].Start.Line, LastStopLine, StartLine);
+            if (StartLine <= Line) and (R[C].Stop.Line >= Line) then
+            begin
+              for I := StartLine to R[C].Stop.Line do
+              begin
+                ZeroLine := I - 1;
+                if (ZeroLine >= 0) and (ZeroLine < FLiveBlameData.FLines.Count) then
+                begin
+                  RevIdx := -1;
+                  for J := 0 to Pred(FLiveBlameData.FRevisions.Count) do
+                    if FLiveBlameData.FRevisions[J].RevisionStr = FLiveBlameData.FLines[ZeroLine].RevisionStr then
+                    begin
+                      RevIdx := J;
+                      Break;
+                    end;
+                  if RevIdx > MaxRevIdx then
+                  begin
+                    MaxRevIdx := RevIdx;
+                    MethodRevision := FLiveBlameData.FLines[ZeroLine];
+                  end;
+                  MethodSummary.Add(FLiveBlameData.FLines[ZeroLine]);
+                end;
+              end;
+              Break;
+            end;
+            LastStopLine := R[C].Stop.Line;
+          end;
+      end;
+      LiveBlameInformation.AddRevisions(FLiveBlameData.FRevisions);
+      for I := 0 to Pred(FLiveBlameData.FRevisions.Count) do
+        DoGetRevisionColor(FLiveBlameData.FRevisions[I]);
+      LiveBlameInformation.AddRevisionColorsMapped(FLiveBlameData.FRevisionColorList);
+      LiveBlameInformation.SetLineRevisionMapped(Revision);
+      LiveBlameInformation.LineNo := Line;
+      if Assigned(MethodRevision) then
+      begin
+        LiveBlameInformation.SetLastMethodRevisionMapped(MethodRevision);
+        LiveBlameInformation.AssignMethodSummaryMapped(MethodSummary);
+        LiveBlameInformation.LineMethodName := MethodName;
+      end;
+    end;
+    UpdateLiveBlameInfo(LiveBlameInformation);
+  finally
+    MethodSummary.Free;
+    LiveBlameInformation.Free;
+  end;
 end;
 
 procedure TLiveBlameEditorPanel.CheckInstallHook;
@@ -2062,6 +2242,12 @@ begin
     FSettings.ShowUserInfoColor := True;
   end
   else
+  if Sender = FShowInfoFormMenuItem then
+  begin
+    ShowLiveBlameInfo;
+    ChangeLineEvent(nil);
+  end
+  else
   if Sender = FConfigMenuItem then
   begin
     (BorlandIDEServices as IOTAServices).GetEnvironmentOptions.EditOptions('Version Control', 'Blame');
@@ -2112,6 +2298,15 @@ begin
       MenuItem.Checked := (Presets.SelectedID > 0) and (Presets[I].ID = Presets.SelectedID);
       FPopupMenu.Items.Add(MenuItem);
     end;
+
+    MenuItem := TMenuItem.Create(FPopupMenu);
+    MenuItem.Caption := '-';
+    FPopupMenu.Items.Add(MenuItem);
+    FShowInfoFormMenuItem := TMenuItem.Create(FPopupMenu);
+    FShowInfoFormMenuItem.Caption := 'Show Info Form';
+    FShowInfoFormMenuItem.OnClick := HandlePopupMenu;
+    FPopupMenu.Items.Add(FShowInfoFormMenuItem);
+
     MenuItem := TMenuItem.Create(FPopupMenu);
     MenuItem.Caption := '-';
     FPopupMenu.Items.Add(MenuItem);
@@ -2136,6 +2331,24 @@ begin
   CompareRevisionThread.AddFile(FLiveBlameData.FFileName, ARevisionIDStr, '', FLiveBlameData.FFileHistory);
   {$ENDIF}
   CompareRevisionThread.Start;
+end;
+
+procedure TLiveBlameEditorPanel.InstallLineChangeHook;
+var
+  E: TObject;
+  Ev: TEvent;
+begin
+  E := GetEditControl;
+  if Assigned(E) then
+  begin
+    TEditControlAddresses.ReadAddresses(E.ClassType);
+    if TEditControlAddresses.FEvCaretLineChangeOffset > 0 then
+    begin
+      Ev := TEvent(Pointer(PDWORD(Integer(E) + TEditControlAddresses.FEvCaretLineChangeOffset)^));
+      if Ev.IndexOf(ChangeLineEvent) = -1 then
+        Ev.Add(ChangeLineEvent);
+    end;
+  end;
 end;
 
 procedure TLiveBlameEditorPanel.SetEnabled(AValue: Boolean);
@@ -2242,6 +2455,8 @@ begin
     UpdateGutterWidth;
     FPaintBox.Invalidate;
   end;
+  if Visible then
+    InstallLineChangeHook;
 end;
 
 procedure TLiveBlameEditorPanel.UnInstallHooks;
@@ -2556,7 +2771,7 @@ begin
   try
     TSL.LoadFromFile(FFileName);
     FileAge(FFileName, DT);
-    FFileRevision.FDate := DT - 1 / 86400;
+    FFileRevision.Date := DT - 1 / 86400;
     {
     TSL2.LoadFromFile(ExtractFilePath(FFileName) + '.svn\text-base\' + ExtractFileName(FFileName) + '.svn-base');//TODO:remove
     }
@@ -2626,8 +2841,8 @@ begin
   begin
     FLiveBlameData.FLastAge := EC.GetContentAge;
     FLiveBlameData.FLastStreamSize := StreamStat.cbSize;
-    FLiveBlameData.FBufferRevision.FDate := Now;//FLastAge + 1 / 24 - 1 / 86400;
-    FLiveBlameData.FBufferRevision.FDateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FLastAge);
+    FLiveBlameData.FBufferRevision.Date := Now;//FLastAge + 1 / 24 - 1 / 86400;
+    FLiveBlameData.FBufferRevision.DateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FLastAge);
     MS := TMemoryStream.Create;
     try
       SA := TStreamAdapter.Create(MS);
@@ -3349,6 +3564,9 @@ const
   {$IFDEF VER230}
   coreide = 'coreide160.bpl';
   {$ENDIF VER230}
+  {$IFDEF VER240}
+  coreide = 'coreide170.bpl';
+  {$ENDIF VER240}
   SLineIsElidedName = '@Editorcontrol@TCustomEditControl@LineIsElided$qqri';
 
 function LineIsElided(Self: TObject; LineNum: Integer): Boolean; external coreide name SLineIsElidedName;
@@ -3661,8 +3879,8 @@ begin
         FLiveBlameData.FStage := 3;
       if FLiveBlameData.FBlameInfoAvailable then
       begin
-        FLiveBlameData.FBufferRevision.FDateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FBufferRevision.FDate);
-        FLiveBlameData.FFileRevision.FDateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FFileRevision.FDate);
+        FLiveBlameData.FBufferRevision.DateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FBufferRevision.Date);
+        FLiveBlameData.FFileRevision.DateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FFileRevision.Date);
       end;
 
       FRevisionRectangles.Clear;

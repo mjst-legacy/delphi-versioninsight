@@ -73,6 +73,28 @@ uses
   VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings, Registry, VerInsLiveBlameTypes,
   Rtti, Events, VerInsIDEDockInfo;
 
+{$IFDEF VER220}
+type
+  TStyleServices = class(TThemeServices)
+  private
+    function GetEnabled: Boolean;
+  public
+    property Enabled: Boolean read GetEnabled;
+  end;
+
+{ TStyleServices }
+
+function TStyleServices.GetEnabled: Boolean;
+begin
+  Result := ThemesEnabled;
+end;
+
+function StyleServices: TStyleServices; inline;
+begin
+  Result := TStyleServices(ThemeServices);
+end;
+{$ENDIF VER220}
+
 procedure Register;
 begin
   RegisterPackageWizard(TLiveBlameWizard.Create);
@@ -546,7 +568,6 @@ type
     procedure HandleMouseLeave(Sender: TObject);
     procedure HandleHintShow(var Msg: TMessage);
     function GetHintTextAndSize(AX, AY: Integer; var ARevision: TRevisionColor; var ABlockRect, AHintRect: TRect; var ADeletedLines: TDeletedLines): Boolean;
-    procedure CMHintShow(var Msg: TMessage);
     function GetDeleteHintRect(ADeletedLines: TDeletedLines; var ARect: TRect): Boolean;
     function GetHintRect(ARevision: TRevisionColor; var ARect: TRect): Boolean;
     procedure HandlePopupMenu(Sender: TObject);
@@ -607,13 +628,13 @@ var
   ClipRect, R: TRect;
 begin
   R := ARect;
-  if CheckWin32Version(6) and ThemeServices.ThemesEnabled and True then
+  if CheckWin32Version(6) and StyleServices.Enabled and True then
   begin
     // Paint Vista gradient background if themes enabled
     ClipRect := R;
     ClipRect.Bottom := ClipRect.Bottom + 3;
     InflateRect(R, 4, 4);
-    with ThemeServices do
+    with StyleServices do
       DrawElement(ATargetCanvas.Handle, GetElementDetails(tttStandardNormal), R, ClipRect);
     R := ClipRect;
   end
@@ -634,13 +655,13 @@ var
   ClipRect, R, RLogMessage: TRect;
 begin
   R := ARect;
-  if CheckWin32Version(6) and ThemeServices.ThemesEnabled and True then
+  if CheckWin32Version(6) and StyleServices.Enabled and True then
   begin
     // Paint Vista gradient background if themes enabled
     ClipRect := R;
     ClipRect.Bottom := ClipRect.Bottom + 3;
     InflateRect(R, 4, 4);
-    with ThemeServices do
+    with StyleServices do
       DrawElement(ATargetCanvas.Handle, GetElementDetails(tttStandardNormal), R, ClipRect);
     R := ClipRect;
   end
@@ -1637,11 +1658,6 @@ begin
   end;
 end;
 
-procedure TLiveBlameEditorPanel.CMHintShow(var Msg: TMessage);
-begin
-  inherited;
-end;
-
 constructor TLiveBlameEditorPanel.Create(AOwner: TComponent);
 var
   User: TJVCSLineHistoryUserSettingsItem;
@@ -2091,6 +2107,9 @@ begin
      Result := RGB(255, 255, 255);
   end;
 end;
+
+type
+  PHintInfo = Controls.PHintInfo;
 
 procedure TLiveBlameEditorPanel.HandleHintShow(var Msg: TMessage);
 var

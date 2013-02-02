@@ -24,6 +24,8 @@
 
 unit VerInsIDETypes;
 
+{$WARN UNIT_PLATFORM OFF}
+
 interface
 
 uses
@@ -204,7 +206,6 @@ procedure TCompareRevisionThread.Execute;
 var
   I, J, Idx: Integer;
   FileName: string;
-  MemStream: TMemoryStream;
   CurrentFileHistory: IOTAFileHistory;
 begin
   for I := 0 to FFiles.Count - 1 do

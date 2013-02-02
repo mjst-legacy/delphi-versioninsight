@@ -140,7 +140,7 @@ type
 
   TLiveBlameInformation = class(TPersistent)
   private
-    FLastMethodRevision: TJVCSLineHistoryRevision;
+    FLatestMethodRevision: TJVCSLineHistoryRevision;
     FLineNo: Integer;
     FLineRevision: TJVCSLineHistoryRevision;
     FMethodName: string;
@@ -160,9 +160,9 @@ type
     procedure AssignSummaryMapped(ASummary: TJVCSLineHistorySummary);
     procedure Clear;
     function GetRevisionColor(ALineHistoryRevision: TJVCSLineHistoryRevision): TRevisionColor;
-    procedure SetLastMethodRevisionMapped(AValue: TJVCSLineHistoryRevision);
+    procedure SetLatestMethodRevisionMapped(AValue: TJVCSLineHistoryRevision);
     procedure SetLineRevisionMapped(AValue: TJVCSLineHistoryRevision);
-    property LastMethodRevision: TJVCSLineHistoryRevision read FLastMethodRevision write FLastMethodRevision;
+    property LatestMethodRevision: TJVCSLineHistoryRevision read FLatestMethodRevision write FLatestMethodRevision;
     property LineMethodName: string read FMethodName write FMethodName;
     property LineNo: Integer read FLineNo write FLineNo;
     property LineRevision: TJVCSLineHistoryRevision read FLineRevision write FLineRevision;
@@ -515,7 +515,7 @@ end;
 
 procedure TLiveBlameInformation.Clear;
 begin
-  FLastMethodRevision := nil;
+  FLatestMethodRevision := nil;
   FLineNo := 0;
   FLineRevision := nil;
   FMethodName := '';
@@ -578,24 +578,24 @@ begin
     TLiveBlameInformation(Dest).FMethodName := FMethodName;
     TLiveBlameInformation(Dest).AssignMethodSummaryMapped(FMethodSummary);
     TLiveBlameInformation(Dest).AssignSummaryMapped(FSummary);
-    TLiveBlameInformation(Dest).SetLastMethodRevisionMapped(FLastMethodRevision);
+    TLiveBlameInformation(Dest).SetLatestMethodRevisionMapped(FLatestMethodRevision);
     TLiveBlameInformation(Dest).SetLineRevisionMapped(FLineRevision);
   end
   else
     inherited AssignTo(Dest);
 end;
 
-procedure TLiveBlameInformation.SetLastMethodRevisionMapped(AValue: TJVCSLineHistoryRevision);
+procedure TLiveBlameInformation.SetLatestMethodRevisionMapped(AValue: TJVCSLineHistoryRevision);
 var
   NewRevision: TJVCSLineHistoryRevision;
 begin
-  FLastMethodRevision := AValue;
-  if Assigned(FLastMethodRevision) then
+  FLatestMethodRevision := AValue;
+  if Assigned(FLatestMethodRevision) then
   begin
-    if FRevisionMapping.TryGetValue(FLastMethodRevision, NewRevision) then
-      FLastMethodRevision := NewRevision
+    if FRevisionMapping.TryGetValue(FLatestMethodRevision, NewRevision) then
+      FLatestMethodRevision := NewRevision
     else
-      FLastMethodRevision := nil;
+      FLatestMethodRevision := nil;
   end;
 end;
 

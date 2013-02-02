@@ -1607,7 +1607,7 @@ begin
       LiveBlameInformation.LineNo := Line;
       if Assigned(MethodRevision) then
       begin
-        LiveBlameInformation.SetLastMethodRevisionMapped(MethodRevision);
+        LiveBlameInformation.SetLatestMethodRevisionMapped(MethodRevision);
         LiveBlameInformation.AssignMethodSummaryMapped(MethodSummary);
         LiveBlameInformation.LineMethodName := MethodName;
       end;

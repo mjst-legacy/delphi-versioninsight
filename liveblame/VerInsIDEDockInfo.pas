@@ -125,13 +125,13 @@ var
   S: string;
 begin
   inherited;
-  if Assigned(FInformation.LastMethodRevision) then
+  if Assigned(FInformation.LatestMethodRevision) then
   begin
     S := 'Latest Revision:';
     W := PaintBox1.Canvas.TextWidth(S);
     PaintBox1.Canvas.TextOut(0, 4, S);
     W := W + 2;
-    PaintRevision(PaintBox1.Canvas, W, 0, FInformation.LastMethodRevision);
+    PaintRevision(PaintBox1.Canvas, W, 0, FInformation.LatestMethodRevision);
   end;
 end;
 
@@ -171,7 +171,7 @@ var
   S: string;
 begin
   inherited;
-  if Assigned(FInformation.LastMethodRevision) then
+  if Assigned(FInformation.LatestMethodRevision) then
   begin
     OffsetX := 0;
     S := 'Top revisions:';

@@ -1032,14 +1032,16 @@ begin
         LHRevision.Comment := TrimRight(FSvnItem.HistoryItems[I].LogMessage);
       end;
       FRevisions.Add(TJVCSLineHistoryRevision.Create);
+      FFileRevision := FRevisions.Last;
+
+      FRevisions.Add(TJVCSLineHistoryRevision.Create);
       FBufferRevision := FRevisions.Last;
+
       FBufferRevision.RevisionStr := 'Buff';
       FBufferRevision.UserStr := 'User';//TODO:
-
       FBufferRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
       FBufferRevision.Date := Now;
-      FRevisions.Add(TJVCSLineHistoryRevision.Create);
-      FFileRevision := FRevisions.Last;
+
       FFileRevision.RevisionStr := 'File';
       FFileRevision.UserStr := 'User';//TODO:
       FFileRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
@@ -1147,14 +1149,16 @@ begin
           LHRevision.Comment := TrimRight(FFileHistory.Comment[I]);
         end;
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
+        FFileRevision := FRevisions.Last;
+
+        FRevisions.Add(TJVCSLineHistoryRevision.Create);
         FBufferRevision := FRevisions.Last;
+
         FBufferRevision.RevisionStr := 'Buff';
         FBufferRevision.UserStr := 'User';//TODO:
-
         FBufferRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
         FBufferRevision.Date := Now;
-        FRevisions.Add(TJVCSLineHistoryRevision.Create);
-        FFileRevision := FRevisions.Last;
+
         FFileRevision.RevisionStr := 'File';
         FFileRevision.UserStr := 'User';//TODO:
         FFileRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);

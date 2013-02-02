@@ -118,7 +118,7 @@ begin
     len := length(line);
     while i <= len do
     begin
-      if not (line[i] in [#9,#32]) then
+      if not CharInSet(line[i], [#9,#32]) then
       begin
         s[j] := line[i];
         inc(j);

@@ -1019,6 +1019,7 @@ begin
       begin
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
         LHRevision := FRevisions.Last;
+        LHRevision.ListIndex := FRevisions.Count;
         RevisionsDict.Add(FSvnItem.HistoryItems[I].Revision, LHRevision);
         LHRevision.RevisionStr := IntToStr(FSvnItem.HistoryItems[I].Revision);
         LHRevision.OrgUserStr := FSvnItem.HistoryItems[I].Author;
@@ -1033,9 +1034,11 @@ begin
       end;
       FRevisions.Add(TJVCSLineHistoryRevision.Create);
       FFileRevision := FRevisions.Last;
+      FFileRevision.ListIndex := FRevisions.Count;
 
       FRevisions.Add(TJVCSLineHistoryRevision.Create);
       FBufferRevision := FRevisions.Last;
+      FBufferRevision.ListIndex := FRevisions.Count;
 
       FBufferRevision.RevisionStr := 'Buff';
       FBufferRevision.UserStr := 'User';//TODO:
@@ -1136,6 +1139,7 @@ begin
         begin
           FRevisions.Add(TJVCSLineHistoryRevision.Create);
           LHRevision := FRevisions.Last;
+          LHRevision.ListIndex := FRevisions.Count;
           RevisionsDict.Add(FFileHistory.Ident[I], LHRevision);
           LHRevision.RevisionStr := FFileHistory.Ident[I];
           LHRevision.OrgUserStr := FFileHistory.Author[I];
@@ -1150,9 +1154,11 @@ begin
         end;
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
         FFileRevision := FRevisions.Last;
+        FFileRevision.ListIndex := FRevisions.Count;
 
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
         FBufferRevision := FRevisions.Last;
+        FBufferRevision.ListIndex := FRevisions.Count;
 
         FBufferRevision.RevisionStr := 'Buff';
         FBufferRevision.UserStr := 'User';//TODO:
@@ -1559,7 +1565,7 @@ var
   MR: IOTAModuleRegions;
   R: TOTARegions;
   Module: IOTAModule;
-  C, I, J, RevIdx, MaxRevIdx, LastStopLine, StartLine: Integer;
+  C, I, RevIdx, MaxRevIdx, LastStopLine, StartLine: Integer;
   LiveBlameInformation: TLiveBlameInformation;
   MethodSummary: TJVCSLineHistorySummary;
   EC: TObject;
@@ -1604,13 +1610,7 @@ begin
                 ZeroLine := I - 1;
                 if (ZeroLine >= 0) and (ZeroLine < FLiveBlameData.FLines.Count) then
                 begin
-                  RevIdx := -1;
-                  for J := 0 to Pred(FLiveBlameData.FRevisions.Count) do
-                    if FLiveBlameData.FRevisions[J].RevisionStr = FLiveBlameData.FLines[ZeroLine].RevisionStr then
-                    begin
-                      RevIdx := J;
-                      Break;
-                    end;
+                  RevIdx := FLiveBlameData.FLines[ZeroLine].ListIndex;
                   if RevIdx > MaxRevIdx then
                   begin
                     MaxRevIdx := RevIdx;

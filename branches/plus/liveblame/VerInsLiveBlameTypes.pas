@@ -34,6 +34,7 @@ type
   private
     FDate: TDateTime;
     FDateStr: string;
+    FListIndex: Integer;
     FRevisionStr: string;
     FOrgUserStr: string;
     FUserStr: string;
@@ -43,6 +44,7 @@ type
   public
     property Date: TDateTime read FDate write FDate;
     property DateStr: string read FDateStr write FDateStr;
+    property ListIndex: Integer read FListIndex write FListIndex;
     property OrgUserStr: string read FOrgUserStr write FOrgUserStr;
     property RevisionStr: string read FRevisionStr write FRevisionStr;
     property UserStr: string read FUserStr write FUserStr;
@@ -182,6 +184,7 @@ begin
   begin
     TJVCSLineHistoryRevision(Dest).FDate := FDate;
     TJVCSLineHistoryRevision(Dest).FDateStr := FDateStr;
+    TJVCSLineHistoryRevision(Dest).FListIndex := FListIndex;
     TJVCSLineHistoryRevision(Dest).FRevisionStr := FRevisionStr;
     TJVCSLineHistoryRevision(Dest).FOrgUserStr := FOrgUserStr;
     TJVCSLineHistoryRevision(Dest).FUserStr := FUserStr;

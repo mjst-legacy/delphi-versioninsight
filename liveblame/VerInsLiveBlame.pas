@@ -443,6 +443,8 @@ type
     FPaintBox: TLiveBlamePaintBox;
     FFirstRevisionIDStr: string;
     FLatestRevisionContent: RawByteString;
+    FSummary: TJVCSLineHistorySummary;
+    FLatestRevision: TJVCSLineHistoryRevision;
   public
     constructor Create(const AFileName: string); reintroduce;
     destructor Destroy; override;
@@ -961,10 +963,13 @@ begin
   FBlameInfoReady := False;
   FRevisionColorList := TObjectList<TRevisionColor>.Create;
   FBlameCounter := 0;
+  FSummary := TJVCSLineHistorySummary.Create;
+  FLatestRevision := nil;
 end;
 
 destructor TCustomLiveBlameData.Destroy;
 begin
+  FSummary.Free;
   FDeletedLines.Free;
   FRevisionColorList.Free;
   FOrgLines.Free;
@@ -1630,6 +1635,8 @@ begin
       LiveBlameInformation.AddRevisionColorsMapped(FLiveBlameData.FRevisionColorList);
       LiveBlameInformation.SetLineRevisionMapped(Revision);
       LiveBlameInformation.LineNo := Line;
+      LiveBlameInformation.AssignSummaryMapped(FLiveBlameData.FSummary);
+      LiveBlameInformation.SetLatestRevisionMapped(FLiveBlameData.FLatestRevision);
       if Assigned(MethodRevision) then
       begin
         LiveBlameInformation.SetLatestMethodRevisionMapped(MethodRevision);
@@ -2744,6 +2751,8 @@ type
     FFileRevision: TJVCSLineHistoryRevision;
     FBufferRevision: TJVCSLineHistoryRevision;
     FDeletedLines2: TObjectList<TDeletedLines>;
+    FSummary: TJVCSLineHistorySummary;
+    FLatestRevision: TJVCSLineHistoryRevision;
   protected
     procedure Execute; override;
   public
@@ -2770,21 +2779,25 @@ begin
   FBufferRevision := ABufferRevision;
   FOrgLines := AOrgLines;
   FDeletedLines2 := ADeletedLines2;
+  FSummary := TJVCSLineHistorySummary.Create;
+  FLatestRevision := nil;
 end;
 
 destructor TLineUpdateThread.Destroy;
 begin
+  FSummary.Free;
   FLines.Free;
   inherited Destroy;
 end;
 
 procedure TLineUpdateThread.Execute;
 var
-  I: Integer;
+  I, MaxIdx: Integer;
   TSL, TSL2, SL: TStringList;
   DT: TDateTime;
   DeletedLines1, DeletedLines2: TObjectList<TDeletedLines>;
   MS: TMemoryStream;
+  LineRevision: TJVCSLineHistoryRevision;
 begin
   TSL := TStringList.Create;
   TSL2 := TStringList.Create;
@@ -2815,7 +2828,9 @@ begin
     FDeletedLines2.Clear;
     BuildDiff(TSL, SL, TObject(1), DeletedLines2, FDeletedLines2, 1);
     FLines.Clear;
+    MaxIdx := -1;
     for I := 0 to SL.Count - 1 do
+    begin
       if SL.Objects[I] = TObject(1) then
         FLines.Add(FBufferRevision)
       else
@@ -2823,6 +2838,14 @@ begin
         FLines.Add(FFileRevision)
       else
         FLines.Add(TJVCSLineHistoryRevision(SL.Objects[I]));
+      LineRevision := FLines.Last;
+      FSummary.Add(LineRevision);
+      if LineRevision.ListIndex > MaxIdx then
+      begin
+        MaxIdx := LineRevision.ListIndex;
+        FLatestRevision := LineRevision;
+      end;
+    end;
   finally
     DeletedLines1.Free;
     DeletedLines2.Free;
@@ -2836,7 +2859,10 @@ procedure TLiveBlameEditorPanel.HandleDiffThreadReady(Sender: TObject);
 begin
   FLiveBlameData.FLines.Clear;
   FLiveBlameData.FLines.AddRange(TLineUpdateThread(Sender).FLines);
+  FLiveBlameData.FSummary.Assign(TLineUpdateThread(Sender).FSummary);
+  FLiveBlameData.FLatestRevision := TLineUpdateThread(Sender).FLatestRevision;
   FPaintBox.Invalidate;
+  ChangeLineEvent(nil);
 end;
 
 procedure TLiveBlameEditorPanel.UpdateLineHistory(ASourceEditor: IOTASourceEditor);

@@ -143,6 +143,7 @@ type
   TLiveBlameInformation = class(TPersistent)
   private
     FLatestMethodRevision: TJVCSLineHistoryRevision;
+    FLatestRevision: TJVCSLineHistoryRevision;
     FLineNo: Integer;
     FLineRevision: TJVCSLineHistoryRevision;
     FMethodName: string;
@@ -163,8 +164,10 @@ type
     procedure Clear;
     function GetRevisionColor(ALineHistoryRevision: TJVCSLineHistoryRevision): TRevisionColor;
     procedure SetLatestMethodRevisionMapped(AValue: TJVCSLineHistoryRevision);
+    procedure SetLatestRevisionMapped(AValue: TJVCSLineHistoryRevision);
     procedure SetLineRevisionMapped(AValue: TJVCSLineHistoryRevision);
     property LatestMethodRevision: TJVCSLineHistoryRevision read FLatestMethodRevision write FLatestMethodRevision;
+    property LatestRevision: TJVCSLineHistoryRevision read FLatestRevision write FLatestRevision;
     property LineMethodName: string read FMethodName write FMethodName;
     property LineNo: Integer read FLineNo write FLineNo;
     property LineRevision: TJVCSLineHistoryRevision read FLineRevision write FLineRevision;
@@ -519,6 +522,7 @@ end;
 procedure TLiveBlameInformation.Clear;
 begin
   FLatestMethodRevision := nil;
+  FLatestRevision := nil;
   FLineNo := 0;
   FLineRevision := nil;
   FMethodName := '';
@@ -582,6 +586,7 @@ begin
     TLiveBlameInformation(Dest).AssignMethodSummaryMapped(FMethodSummary);
     TLiveBlameInformation(Dest).AssignSummaryMapped(FSummary);
     TLiveBlameInformation(Dest).SetLatestMethodRevisionMapped(FLatestMethodRevision);
+    TLiveBlameInformation(Dest).SetLatestRevisionMapped(FLatestRevision);
     TLiveBlameInformation(Dest).SetLineRevisionMapped(FLineRevision);
   end
   else
@@ -599,6 +604,20 @@ begin
       FLatestMethodRevision := NewRevision
     else
       FLatestMethodRevision := nil;
+  end;
+end;
+
+procedure TLiveBlameInformation.SetLatestRevisionMapped(AValue: TJVCSLineHistoryRevision);
+var
+  NewRevision: TJVCSLineHistoryRevision;
+begin
+  FLatestRevision := AValue;
+  if Assigned(FLatestRevision) then
+  begin
+    if FRevisionMapping.TryGetValue(FLatestRevision, NewRevision) then
+      FLatestRevision := NewRevision
+    else
+      FLatestRevision := nil;
   end;
 end;
 

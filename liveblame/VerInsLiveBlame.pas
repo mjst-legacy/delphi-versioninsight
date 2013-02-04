@@ -1613,7 +1613,10 @@ begin
               for I := StartLine to R[C].Stop.Line do
               begin
                 ZeroLine := I - 1;
-                if (ZeroLine >= 0) and (ZeroLine < FLiveBlameData.FLines.Count) then
+                { FLines[ZeroLine] can be nil when history item cannot be found for example when a
+                  file was copied or renamed and history is loaded without "Follow renames" }
+                if (ZeroLine >= 0) and (ZeroLine < FLiveBlameData.FLines.Count) and
+                  Assigned(FLiveBlameData.FLines[ZeroLine]) then
                 begin
                   RevIdx := FLiveBlameData.FLines[ZeroLine].ListIndex;
                   if RevIdx > MaxRevIdx then
@@ -2839,11 +2842,16 @@ begin
       else
         FLines.Add(TJVCSLineHistoryRevision(SL.Objects[I]));
       LineRevision := FLines.Last;
-      FSummary.Add(LineRevision);
-      if LineRevision.ListIndex > MaxIdx then
+      { LineRevision can be nil when history item cannot be found for example when a
+        file was copied or renamed and history is loaded without "Follow renames" }
+      if Assigned(LineRevision) then
       begin
-        MaxIdx := LineRevision.ListIndex;
-        FLatestRevision := LineRevision;
+        FSummary.Add(LineRevision);
+        if LineRevision.ListIndex > MaxIdx then
+        begin
+          MaxIdx := LineRevision.ListIndex;
+          FLatestRevision := LineRevision;
+        end;
       end;
     end;
   finally

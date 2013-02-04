@@ -1046,11 +1046,13 @@ begin
       FBufferRevision.ListIndex := FRevisions.Count;
 
       FBufferRevision.RevisionStr := 'Buff';
+      FBufferRevision.OrgUserStr := 'User';//TODO:
       FBufferRevision.UserStr := 'User';//TODO:
       FBufferRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
       FBufferRevision.Date := Now;
 
       FFileRevision.RevisionStr := 'File';
+      FFileRevision.OrgUserStr := 'User';//TODO:
       FFileRevision.UserStr := 'User';//TODO:
       FFileRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
       FFileRevision.Date := Now;
@@ -1166,11 +1168,13 @@ begin
         FBufferRevision.ListIndex := FRevisions.Count;
 
         FBufferRevision.RevisionStr := 'Buff';
+        FBufferRevision.OrgUserStr := 'User';//TODO:
         FBufferRevision.UserStr := 'User';//TODO:
         FBufferRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
         FBufferRevision.Date := Now;
 
         FFileRevision.RevisionStr := 'File';
+        FFileRevision.OrgUserStr := 'User';//TODO:
         FFileRevision.UserStr := 'User';//TODO:
         FFileRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
         FFileRevision.Date := Now;

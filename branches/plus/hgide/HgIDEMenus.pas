@@ -716,7 +716,6 @@ var
   DeferredFiles, TempFiles: TStringList;
   Res: TOTAProFileStateResult;
   FileState: TOTAProFileState;
-  Searchable: Boolean;
   WaitCycles, FoundCount: Integer;
   FileStateProvider: IOTAProVersionControlFileStateProvider;
 begin

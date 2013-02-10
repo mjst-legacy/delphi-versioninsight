@@ -448,7 +448,7 @@ end;
 
 function TGitHistoryItem.GetFile: TBytes;
 var
-  Res: Integer;
+  //Res: Integer;
   CmdLine, Output: string;
   CurrentDir: string;
   FullFileName: string;
@@ -456,12 +456,12 @@ var
 begin
   CurrentDir := ExtractFilePath(FParent.FFileName);
   CmdLine := FParent.FGitClient.GitExecutable + ' ls-files ' + QuoteFileName(ExtractFileName(FParent.FFileName)) + ' --full-name';
-  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
   FullFileName := Trim(Output);
   CmdLine := FParent.FGitClient.GitExecutable + ' show ' + FHash + ':' + QuoteFileName(FullFileName);
   Output := '';
-  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
-  FileContent := Output;
+  {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
+  FileContent := AnsiString(Output);
   SetLength(Result, Length(FileContent));
   Move(FileContent[1], Result[0], Length(FileContent));
 end;
@@ -603,7 +603,7 @@ end;
 
 function TGitItem.GetBaseFile: TBytes;
 var
-  Res: Integer;
+  //Res: Integer;
   CmdLine, Output: string;
   CurrentDir: string;
   FullFileName: string;
@@ -611,12 +611,12 @@ var
 begin
   CurrentDir := ExtractFilePath(FFileName);
   CmdLine := FGitClient.GitExecutable + ' ls-files ' + QuoteFileName(ExtractFileName(FFileName)) + ' --full-name';
-  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
   FullFileName := Trim(Output);
   CmdLine := FGitClient.GitExecutable + ' show ' + ':' + QuoteFileName(FullFileName);
   Output := '';
-  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
-  FileContent := Output;
+  {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
+  FileContent := AnsiString(Output);
   SetLength(Result, Length(FileContent));
   Move(FileContent[1], Result[0], Length(FileContent));
 end;
@@ -694,7 +694,7 @@ begin
   begin
     OutputStrings := TStringList.Create;
     try
-      OutputStrings.Text := UTF8ToString(Output);
+      OutputStrings.Text := UTF8ToString(AnsiString(Output));
       I := 0;
       HistoryItem := nil;
       while I < OutputStrings.Count do
@@ -832,7 +832,7 @@ end;
 function TGitClient.Commit(AFileList: TStringList; const AMessage: string; const AUser: string = ''): TGitError;
 var
   I, P, Res: Integer;
-  CmdLine, Output, TempFileName, S: string;
+  CmdLine, Output, TempFileName: string;
   CurrentDir: string;
   MS: TMemoryStream;
   B: TBytes;
@@ -1075,7 +1075,7 @@ begin
     else
     begin
       CmdLine := FGitExecutable + ' status ' + QuoteFileName(CheckFileName);
-      Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+      {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
       Result := {(Res = 0) and }(Pos('fatal: Not a git repository', Output) = 0);
     end;
   end
@@ -1098,7 +1098,7 @@ end;
 procedure TGitClient.SaveFileContentToStream(const AFileName, ARevision: string;
   OutputStream: TStream);
 var
-  Res: Integer;
+  //Res: Integer;
   CmdLine, Output: string;
   CurrentDir: string;
   FullFileName: string;
@@ -1106,12 +1106,12 @@ var
 begin
   CurrentDir := ExtractFilePath(AFileName);
   CmdLine := GitExecutable + ' ls-files ' + QuoteFileName(ExtractFileName(AFileName)) + ' --full-name';
-  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+  {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
   FullFileName := Trim(Output);
   CmdLine := GitExecutable + ' show ' + ARevision + ':' + QuoteFileName(FullFileName);
   Output := '';
-  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
-  FileContent := Output;
+  {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
+  FileContent := AnsiString(Output);
   if Length(FileContent) > 0 then
     OutputStream.Write(FileContent[1], Length(FileContent));
 end;

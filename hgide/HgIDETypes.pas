@@ -24,6 +24,8 @@
 
 unit HgIDETypes;
 
+{$WARN UNIT_PLATFORM OFF}
+
 interface
 
 uses
@@ -91,7 +93,7 @@ type
 implementation
 
 uses
-  SysUtils, {SvnConst, }HgClient, HgIDEConst, Forms, ToolsAPI, FileCtrl;
+  SysUtils, HgClient, HgIDEConst, Forms, ToolsAPI, FileCtrl;
 
 const
   cFileNameTag = 'fn';

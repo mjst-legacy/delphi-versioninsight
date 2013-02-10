@@ -495,15 +495,15 @@ end;
 
 function THgHistoryItem.GetFile: TBytes;
 var
-  Res: Integer;
+  //Res: Integer;
   CmdLine, Output: string;
   CurrentDir: string;
   FileContent: AnsiString;
 begin
   CurrentDir := ExtractFilePath(FParent.FFileName);
   CmdLine := FParent.FHgClient.HgExecutable + ' cat -r ' + FChangeSet + ' ' + QuoteFileName(FParent.FFileName);
-  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
-  FileContent := Output;
+  {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
+  FileContent := AnsiString(Output);
   SetLength(Result, Length(FileContent));
   Move(FileContent[1], Result[0], Length(FileContent));
 end;
@@ -514,7 +514,7 @@ var
   CmdLine, Output: string;
   OutputStrings: TStringList;
   BlameItem: THgBlameItem;
-  S, {S2, }CurrentDir, Hash: string;
+  S, CurrentDir: string;
 begin
   CurrentDir := ExtractFilePath(FParent.FFileName);
   CmdLine := FParent.FHgClient.HgExecutable + Format(' annotate -r %d ', [FChangeSetID]);
@@ -559,11 +559,10 @@ end;
 
 procedure THgHistoryItem.LoadChangedFiles;
 var
-  I, J, P, ID, Idx, Res: Integer;
+  I, Res: Integer;
   CmdLine, Output: string;
   OutputStrings: TStringList;
-  BlameItem: THgBlameItem;
-  S, {S2, }CurrentDir, Hash: string;
+  S, CurrentDir: string;
 begin
   CurrentDir := ExtractFilePath(FParent.FFileName);
   CmdLine := FParent.FHgClient.HgExecutable + Format(' st --rev %d --rev %d -m -a -r', [FChangeSetID - 1, FChangeSetID]);
@@ -667,7 +666,6 @@ var
   Res: Integer;
   CmdLine, Output: string;
   CurrentDir: string;
-  FileContent: AnsiString;
 begin
   Result := -1;
   CurrentDir := ExtractFilePath(FFileName);
@@ -679,15 +677,15 @@ end;
 
 function THgItem.GetBaseFile: TBytes;
 var
-  Res: Integer;
+  //Res: Integer;
   CmdLine, Output: string;
   CurrentDir: string;
   FileContent: AnsiString;
 begin
   CurrentDir := ExtractFilePath(FFileName);
   CmdLine := FHgClient.HgExecutable + ' cat ' + QuoteFileName(FFileName);
-  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
-  FileContent := Output;
+  {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
+  FileContent := AnsiString(Output);
   SetLength(Result, Length(FileContent));
   Move(FileContent[1], Result[0], Length(FileContent));
 end;
@@ -1186,7 +1184,7 @@ end;
 
 function THgClient.GetModifications(const APath: string; ACallBack: THgStatusCallback): Boolean;
 var
-  I, Res: Integer;
+  I{, Res}: Integer;
   CmdLine, Output, S: string;
   OutputStrings: TStringList;
   CurrentDir: string;
@@ -1208,7 +1206,7 @@ begin
       IsDirectory := False;
       CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExtractFileName(APath));
     end;
-    Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+    {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
     Result := {(Res = 0) and }(Pos('abort: There is no Mercurial repository', Output) = 0);
     if Result then
     begin
@@ -1314,15 +1312,15 @@ end;
 procedure THgClient.SaveFileContentToStream(const AFileName: string;
   ARevision: Integer; OutputStream: TStream);
 var
-  Res: Integer;
+  //Res: Integer;
   CmdLine, Output: string;
   CurrentDir: string;
   FileContent: AnsiString;
 begin
   CurrentDir := ExtractFilePath(AFileName);
   CmdLine := HgExecutable + ' cat -r ' + IntToStr(ARevision) + ' ' + QuoteFileName(AFileName);
-  Res := Execute(CmdLine, Output, False, nil, CurrentDir);
-  FileContent := Output;
+  {Res := }Execute(CmdLine, Output, False, nil, CurrentDir);
+  FileContent := AnsiString(Output);
   if Length(FileContent) > 0 then
     OutputStream.Write(FileContent[1], Length(FileContent));
 end;

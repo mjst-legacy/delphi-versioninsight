@@ -32,6 +32,8 @@
 {******************************************************************************}
 unit HgClientLog;
 
+{$WARN UNIT_PLATFORM OFF}
+
 interface
 
 uses
@@ -348,11 +350,14 @@ begin
 end;
 
 procedure THgLogFrame.FileReverseMergeRevisionActionExecute(Sender: TObject);
+{
 var
   Revision: TRevision;
   PathName, PathMsg: string;
   FilesSL: TStringList;
+}
 begin
+  {
   Revision := FVisibleRevisions[Revisions.Selected.Index];
   if (Revisions.Selected <> nil) and (Revisions.Selected.Data <> nil) then
   begin
@@ -361,12 +366,11 @@ begin
     PathMsg := StringReplace(PathName, '/', '\', [rfReplaceAll]);
     if FRootRelativePath <> '' then
       Delete(PathMsg, 1, Length(FRootRelativePath));
-    {
     if MessageDlg(Format(sRunFileReverseMergeRevision, [Revision.FRevision, FRootPath + PathMsg]),
       mtConfirmation, mbYesNo, 0) = mrYes then
       FReverseMergeCallBack(PathName, StrToInt(Revision.FRevision), StrToInt(Revision.FRevision) - 1);
-    }
   end;
+  }
 end;
 
 procedure THgLogFrame.FileReverseMergeRevisionActionUpdate(Sender: TObject);
@@ -423,11 +427,13 @@ begin
 end;
 
 procedure THgLogFrame.ReverseMergeRevisionActionExecute(Sender: TObject);
+{
 var
   Revision: TRevision;
+}
 begin
-  Revision := FVisibleRevisions[Revisions.Selected.Index];
   {
+  Revision := FVisibleRevisions[Revisions.Selected.Index];
   if MessageDlg(Format(sRunReverseMergeRevision, [Revision.FRevision, FRootPath]),
     mtConfirmation, mbYesNo, 0) = mrYes then
     FReverseMergeCallBack('', StrToInt(Revision.FRevision), StrToInt(Revision.FRevision) - 1);
@@ -441,11 +447,13 @@ begin
 end;
 
 procedure THgLogFrame.ReverseMergeToRevisionActionExecute(Sender: TObject);
+{
 var
   Revision: TRevision;
+}
 begin
-  Revision := FVisibleRevisions[Revisions.Selected.Index];
   {
+  Revision := FVisibleRevisions[Revisions.Selected.Index];
   if MessageDlg(Format(sRunReverseMergeToRevision, [FRootPath, Revision.FRevision]),
     mtConfirmation, mbYesNo, 0) = mrYes then
     FReverseMergeCallBack('', -1, StrToInt(Revision.FRevision));
@@ -559,9 +567,11 @@ begin
 end;
 
 procedure THgLogFrame.RangeClick(Sender: TObject);
+{
 var
   I, FromRevision, ToRevision: Integer;
   Update: Boolean;
+}
 begin
   {
   SvnRangeSelectDialog := TSvnRangeSelectDialog.Create(Application);

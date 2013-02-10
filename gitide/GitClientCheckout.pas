@@ -32,6 +32,8 @@
 {******************************************************************************}
 unit GitClientCheckout;
 
+{$WARN UNIT_PLATFORM OFF}
+
 interface
 
 uses

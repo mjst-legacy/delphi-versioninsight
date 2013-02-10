@@ -24,6 +24,8 @@
 
 unit SvnIDETypes;
 
+{$WARN UNIT_PLATFORM OFF}
+
 interface
 
 uses

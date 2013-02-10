@@ -32,6 +32,8 @@
 {******************************************************************************}
 unit SvnClientLog;
 
+{$WARN UNIT_PLATFORM OFF}
+
 interface
 
 uses

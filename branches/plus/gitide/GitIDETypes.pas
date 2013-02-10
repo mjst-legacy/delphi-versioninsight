@@ -24,6 +24,8 @@
 
 unit GitIDETypes;
 
+{$WARN UNIT_PLATFORM OFF}
+
 interface
 
 uses
@@ -91,7 +93,7 @@ type
 implementation
 
 uses
-  SysUtils, {SvnConst, }GitClient, GitIDEConst, Forms, ToolsAPI, FileCtrl;
+  SysUtils, GitClient, GitIDEConst, Forms, ToolsAPI, FileCtrl;
 
 const
   cFileNameTag = 'fn';

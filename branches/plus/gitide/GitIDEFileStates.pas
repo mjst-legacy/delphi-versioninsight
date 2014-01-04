@@ -170,83 +170,108 @@ var
   TextStatus: TGitStatus;
   SvnItem: TGitItem;
   Locked: Boolean;
-  Properties: TStringList;
+  Properties, FileList: TStringList;
   StatusStr, FileDir, LastDirectory: string;
   LastDirectoryVersioned: Boolean;
+  StatusList: TGitStatusList;
+  I: Integer;
 begin
   NameThreadForDebugging('VerIns Git State Retriever');
   LastDirectoryVersioned := False;
-  while not Terminated do
-  begin
-    FileName := '';
-    Locked := FLock.TryEnter;
-    try
-      if Locked and (FItems.Count > 0) then
-      begin
-        FileName := FItems[0];
-        FItems.Delete(0);
-      end
-      else
-        LastDirectory := '';
-    finally
-      if Locked then
-        FLock.Leave;
-    end;
-    if FileName <> '' then
+  FileList := TStringList.Create;
+  try
+    while not Terminated do
     begin
+      FileName := '';
+      FileList.Clear;
+      Locked := FLock.TryEnter;
       try
-        FileDir := ExtractFilePath(FileName);
-        if not AnsiSameText(LastDirectory, FileDir) then
+        if Locked then
         begin
-          LastDirectory := FileDir;
-          LastDirectoryVersioned := FSvnClient.IsPathInWorkingCopy(FileDir) and
-            FSvnClient.IsVersioned(FileDir);
-        end;
-        if LastDirectoryVersioned then
-        begin
-          Properties := TStringList.Create;
-          try
-            SvnItem := TGitItem.Create(FSvnClient, FileName);
-            try
-              SvnItem.LoadStatus;
-              TextStatus := SvnItem.Status;
-              //TODO: Resourcestrings + StatusKindStr
-              case TextStatus of
-                gsAdded: StatusStr := 'Added';
-                gsModified: StatusStr := 'Modified';
-                gsNormal: StatusStr := 'Normal';
-                gsUnknown: StatusStr := 'Unknown';
-                else
-                  StatusStr := '?';
-              end;
-              Properties.Add('Status=' + StatusStr);
-              if not (TextStatus in [gsAdded, gsUnknown]) then
-              begin
-                SvnItem.LoadHistory(True);
-                if SvnItem.HistoryCount >= 1 then
-                begin
-                  Properties.Add('Commit Author=' + SvnItem.HistoryItems[0].Author);
-                  Properties.Add('Commit Author Email=' + SvnItem.HistoryItems[0].AuthorEMail);
-                  Properties.Add('Commit Date=' + DateTimeToStr(UTCToTzDateTime(SvnItem.HistoryItems[0].Date)));
-                  Properties.Add('Commit Hash=' + SvnItem.HistoryItems[0].Hash);
-                end;
-              end;
-            finally
-              SvnItem.Free;
-            end;
-            DoState(FileName, True, TextStatus, Properties);
-          finally
-            Properties.Free;
-          end;
+          FileList.Assign(FItems);
+          FItems.Clear;
         end
         else
-          DoState(FileName, False, gsUnknown, nil);
-      except
+          LastDirectory := '';
+      finally
+        if Locked then
+          FLock.Leave;
       end;
+      if FileList.Count > 0 then
+      begin
+        try
+          StatusList := TGitStatusList.Create(FSvnClient);
+          try
+            for I := 0 to FileList.Count - 1 do
+            begin
+              FileName := FileList[I];
+              FileDir := ExtractFilePath(FileName);
+              if not AnsiSameText(LastDirectory, FileDir) then
+              begin
+                LastDirectory := FileDir;
+                LastDirectoryVersioned := FSvnClient.IsPathInWorkingCopy(FileDir) and
+                  FSvnClient.IsVersioned(FileDir);
+              end;
+              if LastDirectoryVersioned then
+                StatusList.Add(FileList[I])
+              else
+                DoState(FileName, False, gsUnknown, nil);
+            end;
+            StatusList.Load;
+            for I := 0 to StatusList.Count - 1 do
+            begin
+              FileName := StatusList[I].Key;
+              Properties := TStringList.Create;
+              try
+                SvnItem := TGitItem.Create(FSvnClient, FileName);
+                try
+                  {//Status is now loaded by StatusList.Load
+                  SvnItem.LoadStatus;
+                  TextStatus := SvnItem.Status;
+                  }
+                  TextStatus := StatusList[I].Value;
+                  //TODO: Resourcestrings + StatusKindStr
+                  case TextStatus of
+                    gsAdded: StatusStr := 'Added';
+                    gsModified: StatusStr := 'Modified';
+                    gsNormal: StatusStr := 'Normal';
+                    gsUnknown: StatusStr := 'Unknown';
+                    else
+                      StatusStr := '?';
+                  end;
+                  Properties.Add('Status=' + StatusStr);
+                  if not (TextStatus in [gsAdded, gsUnknown]) then
+                  begin
+                    SvnItem.LoadHistory(True);
+                    if SvnItem.HistoryCount >= 1 then
+                    begin
+                      Properties.Add('Commit Author=' + SvnItem.HistoryItems[0].Author);
+                      Properties.Add('Commit Author Email=' + SvnItem.HistoryItems[0].AuthorEMail);
+                      Properties.Add('Commit Date=' + DateTimeToStr(UTCToTzDateTime(SvnItem.HistoryItems[0].Date)));
+                      Properties.Add('Commit Hash=' + SvnItem.HistoryItems[0].Hash);
+                    end;
+                  end;
+                finally
+                  SvnItem.Free;
+                end;
+                DoState(FileName, True, TextStatus, Properties);
+              finally
+                Properties.Free;
+              end;
+            end;
+          finally
+            StatusList.Free;
+          end;
+        except
+        end;
+      end;
+      Sleep(1);
     end;
-    Sleep(1);
+  finally
+    FileList.Free;
   end;
 end;
+
 
 constructor TSvnState.Create(const AFileName: string; AState: TOTAProFileState);
 begin

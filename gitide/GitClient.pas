@@ -121,6 +121,22 @@ type
     property Status: TGitStatus read FStatus;
   end;
 
+  TGitStatusList = class(TObject)
+  private
+    FGitClient: TGitClient;
+    FList: TList<TPair<string, TGitStatus>>;
+    function GetCount: Integer;
+    function GetItems(AIndex: Integer): TPair<string, TGitStatus>;
+  public
+    constructor Create(AGitClient: TGitClient);
+    destructor Destroy; override;
+    procedure Add(const AFileName: string);
+    procedure Clear;
+    procedure Load;
+    property Count: Integer read GetCount;
+    property Items[AIndex: Integer]: TPair<string, TGitStatus> read GetItems; default;
+  end;
+
   TGitCloneCallBack = procedure(Sender: TObject; const AText: string; var Cancel: Boolean) of object;
   TGitStatusCallback = procedure(Sender: TObject; Item: TGitItem; var Cancel: Boolean) of object;
   TGitError = (geSuccess, geEmptyCommitMessage, geUnknown);
@@ -824,6 +840,237 @@ begin
         OutputStrings.Free;
       end;
     end;
+  end;
+end;
+
+{ TGitStatusList }
+
+procedure TGitStatusList.Clear;
+begin
+  FList.Clear;
+end;
+
+constructor TGitStatusList.Create(AGitClient: TGitClient);
+begin
+  inherited Create;
+  FGitClient := AGitClient;
+  FList := TList<TPair<string, TGitStatus>>.Create;
+end;
+
+destructor TGitStatusList.Destroy;
+begin
+  FList.Free;
+  inherited Destroy;
+end;
+
+procedure TGitStatusList.Add(const AFileName: string);
+begin
+  FList.Add(TPair<string, TGitStatus>.Create(AFileName, gsUnknown));
+end;
+
+function TGitStatusList.GetCount: Integer;
+begin
+  Result := FList.Count;
+end;
+
+function TGitStatusList.GetItems(AIndex: Integer): TPair<string, TGitStatus>;
+begin
+  Result := FList[AIndex];
+end;
+
+procedure TGitStatusList.Load;
+const
+  MaxItemsPerDir = 10;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  S, CurrentDir, ItemsDir, FileName: string;
+  LoadedItems: TDictionary<Integer, Integer>;
+  DirItems: TList<TPair<Integer, string>>;
+  I, J, Idx, DelIdx, LastIndex, Dummy, L: Integer;
+  OutputStrings: TStringList;
+  Status: TGitStatus;
+  Pair: TPair<string, TGitStatus>;
+begin
+  LoadedItems := TDictionary<Integer, Integer>.Create;
+  DirItems := TList<TPair<Integer, string>>.Create;
+  try
+    LastIndex := 0;
+    while LastIndex < Count do
+    begin
+      DirItems.Clear;
+      ItemsDir := '';
+      for I := LastIndex to Count - 1 do
+        if not LoadedItems.TryGetValue(I, Dummy) then
+        begin
+          if ItemsDir = '' then
+          begin
+            ItemsDir := ExtractFilePath(Items[I].Key);
+            DirItems.Add(TPair<Integer, string>.Create(I, ExtractFileName(Items[I].Key)));
+          end
+          else
+          if AnsiSameText(ItemsDir, ExtractFilePath(Items[I].Key)) then
+            DirItems.Add(TPair<Integer, string>.Create(I, ExtractFileName(Items[I].Key)));
+          if DirItems.Count >= MaxItemsPerDir then
+            Break;
+        end;
+      if DirItems.Count > 0 then
+      begin
+        LastIndex := DirItems.Last.Key;
+        for I := 0 to DirItems.Count - 1 do
+          LoadedItems.Add(DirItems[I].Key, 0);
+        CurrentDir := ItemsDir;
+        CmdLine := FGitClient.GitExecutable + ' diff --name-status ';
+        for I := 0 to DirItems.Count - 1 do
+          CmdLine := CmdLine + ' ' + QuoteFileName(DirItems[I].Value);
+        Output := '';
+        Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+        if Res = 0 then
+        begin
+          OutputStrings := TStringList.Create;
+          try
+            OutputStrings.Text := Output;
+            I := 0;
+            while I < OutputStrings.Count do
+            begin
+              S := AnsiUpperCase(OutputStrings[I]);
+              L := Length(S);
+              if L > 2 then
+              begin
+                if S[1] = 'M' then
+                  Status := gsModified
+                else
+                  Status := gsUnknown;
+                DelIdx := -1;
+                for J := 0 to DirItems.Count - 1 do
+                begin
+                  FileName := AnsiUpperCase(DirItems[J].Value);
+                  if Pos(FileName, S) = L - Length(FileName) + 1 then
+                  begin
+                    Idx := DirItems[J].Key;
+                    Pair := Items[Idx];
+                    Pair.Value := Status;
+                    FList[Idx] := Pair;
+                    DelIdx := J;
+                    Break;
+                  end;
+                end;
+                if DelIdx <> -1 then
+                  DirItems.Delete(DelIdx);
+              end;
+              Inc(I);
+            end;
+          finally
+            OutputStrings.Free;
+          end;
+        end;
+
+        if DirItems.Count > 0 then
+        begin
+          CurrentDir := ItemsDir;
+          CmdLine := FGitClient.GitExecutable + ' diff --cached --name-only --diff-filter=A ';
+          for I := 0 to DirItems.Count - 1 do
+            CmdLine := CmdLine + ' ' + QuoteFileName(DirItems[I].Value);
+          Output := '';
+          Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+          if Res = 0 then
+          begin
+            OutputStrings := TStringList.Create;
+            try
+              OutputStrings.Text := Output;
+              I := 0;
+              while I < OutputStrings.Count do
+              begin
+                S := AnsiUpperCase(OutputStrings[I]);
+                L := Length(S);
+                if L > 0 then
+                begin
+                  Status := gsAdded;
+                  DelIdx := -1;
+                  for J := 0 to DirItems.Count - 1 do
+                  begin
+                    FileName := AnsiUpperCase(DirItems[J].Value);
+                    if Pos(FileName, S) = L - Length(FileName) + 1 then
+                    begin
+                      Idx := DirItems[J].Key;
+                      Pair := Items[Idx];
+                      Pair.Value := Status;
+                      FList[Idx] := Pair;
+                      DelIdx := J;
+                      Break;
+                    end;
+                  end;
+                  if DelIdx <> -1 then
+                    DirItems.Delete(DelIdx);
+                end;
+                Inc(I);
+              end;
+            finally
+              OutputStrings.Free;
+            end;
+          end;
+        end;
+
+        if DirItems.Count > 0 then
+        begin
+          CurrentDir := ItemsDir;
+          CmdLine := FGitClient.GitExecutable + ' ls-files -t ';
+          for I := 0 to DirItems.Count - 1 do
+            CmdLine := CmdLine + ' ' + QuoteFileName(DirItems[I].Value);
+          Output := '';
+          Res := Execute(CmdLine, Output, False, nil, CurrentDir);
+          if Res = 0 then
+          begin
+            OutputStrings := TStringList.Create;
+            try
+              OutputStrings.Text := Output;
+              I := 0;
+              while I < OutputStrings.Count do
+              begin
+                S := AnsiUpperCase(OutputStrings[I]);
+                L := Length(S);
+                if (L > 2) and (S[1] = 'H') then
+                begin
+                  Status := gsNormal;
+                  DelIdx := -1;
+                  for J := 0 to DirItems.Count - 1 do
+                  begin
+                    FileName := AnsiUpperCase(DirItems[J].Value);
+                    if Pos(FileName, S) = L - Length(FileName) + 1 then
+                    begin
+                      Idx := DirItems[J].Key;
+                      Pair := Items[Idx];
+                      Pair.Value := Status;
+                      FList[Idx] := Pair;
+                      DelIdx := J;
+                      Break;
+                    end;
+                  end;
+                  if DelIdx <> -1 then
+                    DirItems.Delete(DelIdx);
+                end;
+                Inc(I);
+              end;
+            finally
+              OutputStrings.Free;
+            end;
+          end;
+        end;
+
+        for I := 0 to DirItems.Count - 1 do
+        begin
+          Idx := DirItems[I].Key;
+          Pair := Items[Idx];
+          Pair.Value := gsUnknown;
+          FList[Idx] := Pair;
+        end;
+      end
+      else
+        Break;
+    end;
+  finally
+    DirItems.Free;
+    LoadedItems.Free;
   end;
 end;
 

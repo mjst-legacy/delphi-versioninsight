@@ -43,7 +43,7 @@ uses
   GitIDEClient, TypInfo;
 
 type
-  TOnStateEvent = procedure(const AFileName: string; AVersioned: Boolean; ATextStatus: TGitStatus; AProperties: TStringList) of object;
+  TOnStateEvent = procedure(const AFileName: string; AVersioned: Boolean; ATextStatus: TGitStatus; AProperties: TStringList; APropertiesLoaded: Boolean) of object;
 
   TSvnStateThread = class(TThread)
   private
@@ -51,13 +51,13 @@ type
     FItems: TStringList;
     FLock: TCriticalSection;
     FOnState: TOnStateEvent;
-    procedure DoState(const AFileName: string; AVersioned: Boolean; ATextStatus: TGitStatus; AProperties: TStringList);
+    procedure DoState(const AFileName: string; AVersioned: Boolean; ATextStatus: TGitStatus; AProperties: TStringList; APropertiesLoaded: Boolean);
   protected
     procedure Execute; override;
   public
     constructor Create(CreateSuspended: Boolean);
     destructor Destroy; override;
-    procedure AddItem(const AFileName: string);
+    procedure AddItem(const AFileName: string; ALoadProperties: Boolean);
     property OnState: TOnStateEvent read FOnState write FOnState;
   end;
 
@@ -67,6 +67,7 @@ type
   private
     FFileName: string;
     FProperties: TStringList;
+    FPropertiesRetrievalState: TSvnRetrievalState;
     FRetrievalState: TSvnRetrievalState;
     FState: TOTAProFileState;
   public
@@ -74,6 +75,7 @@ type
     destructor Destroy; override;
     property FileName: string read FFileName;
     property Properties: TStringList read FProperties;
+    property PropertiesRetrievalState: TSvnRetrievalState read FPropertiesRetrievalState write FPropertiesRetrievalState;
     property RetrievalState: TSvnRetrievalState read FRetrievalState write FRetrievalState;
     property State: TOTAProFileState read FState write FState;
   end;
@@ -113,7 +115,7 @@ type
     FLock: TCriticalSection;
     FRestartThread: Boolean;
     FUpdateCount: Integer;
-    procedure HandleState(const AFileName: string; AVersioned: Boolean; ATextStatus: TGitStatus; AProperties: TStringList);
+    procedure HandleState(const AFileName: string; AVersioned: Boolean; ATextStatus: TGitStatus; AProperties: TStringList; APropertiesLoaded: Boolean);
   protected
     procedure AfterCompile;
     procedure AfterCloseAll;
@@ -146,22 +148,28 @@ begin
   FLock.Free;
 end;
 
-procedure TSvnStateThread.AddItem(const AFileName: string);
+procedure TSvnStateThread.AddItem(const AFileName: string; ALoadProperties: Boolean);
+var
+  Idx: Integer;
 begin
   FLock.Enter;
   try
-    if FItems.IndexOf(AFileName) = -1 then
-      FItems.Add(AFileName);
+    Idx := FItems.IndexOf(AFileName);
+    if (Idx <> -1) and ALoadProperties then
+      FItems.Objects[Idx] := TObject(ALoadProperties)
+    else
+    if Idx = -1 then
+      FItems.AddObject(AFileName, TObject(ALoadProperties));
   finally
     FLock.Leave;
   end;
 end;
 
 procedure TSvnStateThread.DoState(const AFileName: string; AVersioned: Boolean; ATextStatus: TGitStatus;
-  AProperties: TStringList);
+  AProperties: TStringList; APropertiesLoaded: Boolean);
 begin
   if Assigned(FOnState) then
-    FOnState(AFileName, AVersioned, ATextStatus, AProperties);
+    FOnState(AFileName, AVersioned, ATextStatus, AProperties, APropertiesLoaded);
 end;
 
 procedure TSvnStateThread.Execute;
@@ -172,9 +180,9 @@ var
   Locked: Boolean;
   Properties, FileList: TStringList;
   StatusStr, FileDir, LastDirectory: string;
-  LastDirectoryVersioned: Boolean;
+  LastDirectoryVersioned, PropertiesLoaded: Boolean;
   StatusList: TGitStatusList;
-  I: Integer;
+  I{$IFNDEF OLDPROPERTYLOAD}, Idx{$ENDIF}: Integer;
 begin
   NameThreadForDebugging('VerIns Git State Retriever');
   LastDirectoryVersioned := False;
@@ -215,7 +223,7 @@ begin
               if LastDirectoryVersioned then
                 StatusList.Add(FileList[I])
               else
-                DoState(FileName, False, gsUnknown, nil);
+                DoState(FileName, False, gsUnknown, nil, True);
             end;
             StatusList.Load;
             for I := 0 to StatusList.Count - 1 do
@@ -242,19 +250,30 @@ begin
                   Properties.Add('Status=' + StatusStr);
                   if not (TextStatus in [gsAdded, gsUnknown]) then
                   begin
-                    SvnItem.LoadHistory(True);
-                    if SvnItem.HistoryCount >= 1 then
+                    {$IFDEF OLDPROPERTYLOAD}
+                    PropertiesLoaded := True;
+                    {$ELSE}
+                    Idx := FileList.IndexOf(FileName);
+                    PropertiesLoaded := (Idx <> -1) and Boolean(FileList.Objects[Idx]);
+                    {$ENDIF}
+                    if PropertiesLoaded then
                     begin
-                      Properties.Add('Commit Author=' + SvnItem.HistoryItems[0].Author);
-                      Properties.Add('Commit Author Email=' + SvnItem.HistoryItems[0].AuthorEMail);
-                      Properties.Add('Commit Date=' + DateTimeToStr(UTCToTzDateTime(SvnItem.HistoryItems[0].Date)));
-                      Properties.Add('Commit Hash=' + SvnItem.HistoryItems[0].Hash);
+                      SvnItem.LoadHistory(True);
+                      if SvnItem.HistoryCount >= 1 then
+                      begin
+                        Properties.Add('Commit Author=' + SvnItem.HistoryItems[0].Author);
+                        Properties.Add('Commit Author Email=' + SvnItem.HistoryItems[0].AuthorEMail);
+                        Properties.Add('Commit Date=' + DateTimeToStr(UTCToTzDateTime(SvnItem.HistoryItems[0].Date)));
+                        Properties.Add('Commit Hash=' + SvnItem.HistoryItems[0].Hash);
+                      end;
                     end;
-                  end;
+                  end
+                  else
+                    PropertiesLoaded := True;
                 finally
                   SvnItem.Free;
                 end;
-                DoState(FileName, True, TextStatus, Properties);
+                DoState(FileName, True, TextStatus, Properties, PropertiesLoaded);
               finally
                 Properties.Free;
               end;
@@ -279,6 +298,7 @@ begin
   FFileName := AFileName;
   FProperties := TStringList.Create;
   FRetrievalState := rsNew;
+  FPropertiesRetrievalState := rsNew;
   FState := AState;
 end;
 
@@ -546,7 +566,7 @@ begin
     StartThread := False;
     if (State.RetrievalState = rsNew) and (Result = fsrDeferred) then
     begin
-      FThread.AddItem(FileName);
+      FThread.AddItem(FileName, False);
       State.RetrievalState := rsRunning;
       StartThread := True;
     end;
@@ -743,7 +763,7 @@ begin
     if Assigned(StateDir) then
     begin
       State := StateDir.GetState(FileName);
-      if State.RetrievalState in [rsNew, rsRunning] then
+      if State.PropertiesRetrievalState in [rsNew, rsRunning] then
         Result := fsrDeferred
       else
       if State.State.DisplayText <> '?' then
@@ -752,10 +772,10 @@ begin
     else
       State := nil;
     StartThread := False;
-    if (State.RetrievalState = rsNew) and (Result = fsrDeferred) then
+    if (State.PropertiesRetrievalState = rsNew) and (Result = fsrDeferred) then
     begin
-      FThread.AddItem(FileName);
-      State.RetrievalState := rsRunning;
+      FThread.AddItem(FileName, True);
+      State.PropertiesRetrievalState := rsRunning;
       StartThread := True;
     end;
     if Result = fsrOK then //TODO: Resourcestring
@@ -774,7 +794,7 @@ end;
 
 procedure TIOTAProVersionControlFileStateProvider.HandleState(
   const AFileName: string; AVersioned: Boolean; ATextStatus: TGitStatus;
-  AProperties: TStringList);
+  AProperties: TStringList; APropertiesLoaded: Boolean);
 var
   StateDir: TSvnStateDir;
   State: TSvnState;
@@ -813,6 +833,8 @@ begin
         State.Properties.Assign(AProperties)
       else
         State.Properties.Clear;
+      if APropertiesLoaded then
+        State.PropertiesRetrievalState := rsFinished;
     end;
   finally
     FLock.Leave;

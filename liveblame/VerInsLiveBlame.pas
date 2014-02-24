@@ -70,6 +70,9 @@ uses
   {$IFDEF SVNINTERNAL}
   SvnIDEClient, SvnClient, SvnIDETypes,
   {$ENDIF SVNINTERNAL}
+  {$IFDEF TOOLSPROAPI}
+  ToolsProAPI,
+  {$ENDIF TOOLSPROAPI}
   VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings, Registry, VerInsLiveBlameTypes,
   Rtti, Events, VerInsIDEDockInfo;
 
@@ -1288,6 +1291,7 @@ begin
       FAnnotationLineProvider := nil;
 
     ProviderName := '';
+    FileHistoryProvider := nil;
     VersionControlServices := BorlandIDEServices as IOTAVersionControlServices;
     Idents := TStringList.Create;
     try
@@ -1295,6 +1299,11 @@ begin
       for I := 0 to VersionControlServices.Count - 1 do
         if VersionControlServices.Items[I].IsFileManaged(nil, Idents) then
         begin
+          {$IFDEF TOOLSPROAPI}
+          if Supports(VersionControlServices.Items[I], IOTAProVersionControlNotifier195) then
+            FileHistoryProvider := (VersionControlServices.Items[I] as IOTAProVersionControlNotifier195).GetFileHistoryProvider
+          else
+          {$ENDIF TOOLSPROAPI}
           if Supports(VersionControlServices.Items[I], IOTAVersionControlNotifier150) then
           begin
             if (VersionControlServices.Items[I] as IOTAVersionControlNotifier150).Name = 'embarcadero.subversion' then
@@ -1321,11 +1330,11 @@ begin
           FileHistoryProvider := FileHistoryManager.FileHistoryProvider[I];
           Break;
         end;
-      if Assigned(FileHistoryProvider) then
-      begin
-        FLoading := True;
-        (FileHistoryProvider as IOTAAsynchronousHistoryProvider).StartAsynchronousUpdate(FFileName, Self);
-      end;
+    end;
+    if Assigned(FileHistoryProvider) then
+    begin
+      FLoading := True;
+      (FileHistoryProvider as IOTAAsynchronousHistoryProvider).StartAsynchronousUpdate(FFileName, Self);
     end;
   end;
 end;

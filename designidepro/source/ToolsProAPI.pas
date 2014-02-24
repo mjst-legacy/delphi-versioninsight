@@ -4,7 +4,7 @@ unit ToolsProAPI;
 interface
 
 uses
-  ToolsAPI, DesignIntf, Classes, Graphics, ImgList;
+  ToolsAPI, DesignIntf, FileHistoryAPI, Classes, Graphics, ImgList;
 
 const
   { Default file state value indexes }
@@ -71,6 +71,12 @@ type
       system or not.  This way one can install multiple version control systems,
       but new get always added to the primary one. }
     function GetAddNewProjectEnabled: Boolean;
+  end;
+
+  IOTAProVersionControlNotifier195 = interface(IOTAProVersionControlNotifier160)
+  ['{4C721623-1B71-4E1C-9813-ED3548DE4FE4}']
+    { Returns the associated FileHistoryProvider }
+    function GetFileHistoryProvider: IOTAFileHistoryProvider;
   end;
 
   IOTAProSearchFileFindProgress = interface(IInterface)

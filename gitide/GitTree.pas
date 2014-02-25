@@ -14,8 +14,8 @@
 { The Original Code is SvnTree.pas.                                            }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2010 Uwe Schuster. All      }
-{ Rights Reserved.                                                             }
+{ Portions created by Uwe Schuster are Copyright © 2010 - 2014 Uwe Schuster.   }
+{ All Rights Reserved.                                                         }
 {                                                                              }
 { Contributors:                                                                }
 { Uwe Schuster (uschuster)                                                     }

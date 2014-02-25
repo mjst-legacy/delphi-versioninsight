@@ -14,7 +14,7 @@
 { The Original Code is VerInsIDEDockInfo.pas.                                  }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2012 Uwe Schuster.          }
+{ Portions created by Uwe Schuster are Copyright © 2012 - 2014 Uwe Schuster.   }
 { All Rights Reserved.                                                         }
 {                                                                              }
 { Contributors:                                                                }

@@ -14,7 +14,7 @@
 { The Original Code is VerInsLiveBlame.pas.                                    }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2006 - 2011 Uwe Schuster.   }
+{ Portions created by Uwe Schuster are Copyright © 2006 - 2014 Uwe Schuster.   }
 { All Rights Reserved.                                                         }
 {                                                                              }
 { Contributors:                                                                }

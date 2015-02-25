@@ -160,6 +160,7 @@ type
     FUpdateLogMessageCallBack: TUpdateLogMessageCallBack;
     class var FUseCount: Integer;
     procedure AddRevisionToListView(ARevision: TRevision);
+    procedure CreateHandle; override;
     procedure DoCancelSearch;
     procedure DoSearch(const Text: string);
     function GetCommentColumn: Integer;
@@ -680,6 +681,24 @@ begin
   FRevisionFiles := TStringList.Create;
   FExecutingSelectAll := False;
   FBugIDColumnNo := -1;
+  Assert(Revisions.Columns.Count = 4);
+  for I := 0 to 3 do
+  begin
+    FRevisionColumns[I] := Revisions.Columns[I];
+    FColumnDataMapping[I] := I;
+  end;
+  FRevisionColumns[4] := nil;
+  FColumnDataMapping[4] := -1;
+  InitRevisionColumnWidths;
+end;
+
+procedure TSvnLogFrame.CreateHandle;
+var
+  I: Integer;
+begin
+  inherited CreateWnd;
+
+  Revisions.HandleNeeded; // calls CreateWnd => Columns.Clear => all columns are recreated from a stream
   Assert(Revisions.Columns.Count = 4);
   for I := 0 to 3 do
   begin

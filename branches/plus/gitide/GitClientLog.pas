@@ -150,6 +150,7 @@ type
     FExecutingSelectAll: Boolean;
     class var FUseCount: Integer;
     procedure AddRevisionToListView(ARevision: TRevision);
+    procedure CreateHandle; override;
     procedure DoCancelSearch;
     procedure DoSearch(const Text: string);
     function GetCommentColumn: Integer;
@@ -656,6 +657,20 @@ begin
   FRevisionFiles := TStringList.Create;
   FExecutingSelectAll := False;
   FBugIDColumnNo := -1;
+  Assert(Revisions.Columns.Count = 4);
+  for I := 0 to 3 do
+    FRevisionColumns[I] := Revisions.Columns[I];
+  FRevisionColumns[4] := nil;
+  InitRevisionColumnWidths;
+end;
+
+procedure TGitLogFrame.CreateHandle;
+var
+  I: Integer;
+begin
+  inherited CreateWnd;
+
+  Revisions.HandleNeeded; // calls CreateWnd => Columns.Clear => all columns are recreated from a stream
   Assert(Revisions.Columns.Count = 4);
   for I := 0 to 3 do
     FRevisionColumns[I] := Revisions.Columns[I];

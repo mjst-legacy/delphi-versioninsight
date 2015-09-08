@@ -362,8 +362,8 @@ var
   TempStream: IStream;
   Rev: Integer;
   Flag2: TOTADiffFlag;
-  StreamLength: Largeint;
-  Dummy: Largeint;
+  StreamLength: {$IF RTLVersion >= 29.0}LargeUInt{$ELSE}Largeint{$IFEND};
+  Dummy: {$IF RTLVersion >= 29.0}LargeUInt{$ELSE}Largeint{$IFEND};
 begin
   SvnItem := THgItem.Create(FSvnClient, {nil, }FileName{, False, False, True});
   try

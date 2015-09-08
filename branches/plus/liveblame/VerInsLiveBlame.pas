@@ -1208,7 +1208,7 @@ var
   MS: TMemoryStream;
   SA: TStreamAdapter;
   RC: IStream;
-  R, W: Int64;
+  R, W: {$IF RTLVersion >= 29.0}LargeUInt{$ELSE}Largeint{$IFEND};
   StreamStat: TStatStg;
   UpdateRequired: Boolean;
 begin
@@ -2892,7 +2892,7 @@ var
   EC: IOTAEditorContent;
   C: IStream;
   S: RawByteString;
-  R, W: Int64;
+  R, W: {$IF RTLVersion >= 29.0}LargeUInt{$ELSE}Largeint{$IFEND};
   MS: TMemoryStream;
   SA: TStreamAdapter;
   //TSL, TSL2, SL: TStringList;
@@ -3649,6 +3649,9 @@ const
   {$IFDEF VER280}
   coreide = 'coreide210.bpl';
   {$ENDIF VER280}
+  {$IFDEF VER290}
+  coreide = 'coreide220.bpl';
+  {$ENDIF VER290}
   SLineIsElidedName = '@Editorcontrol@TCustomEditControl@LineIsElided$qqri';
 
 function LineIsElided(Self: TObject; LineNum: Integer): Boolean; external coreide name SLineIsElidedName;

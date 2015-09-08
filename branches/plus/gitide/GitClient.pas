@@ -698,7 +698,7 @@ begin
   if FLogFirstRev <> '' then
     CmdLine := CmdLine + FLogFirstRev + ' '
   else
-  if FLogFirstRev <> '' then
+  if FLogLastRev <> '' then
     CmdLine := CmdLine + '...' + FLogLastRev + ' ';
   if FIncludeChangedFiles then
     CmdLine := CmdLine + '--pretty=format:"H: %H%nAT: %at%nAN: %an%nAE: %ae%nS: %s%nB: %b%nF:" --name-status ' + QuoteFileName(LogFileName)

@@ -3652,6 +3652,9 @@ const
   {$IFDEF VER290}
   coreide = 'coreide220.bpl';
   {$ENDIF VER290}
+  {$IFDEF VER300}
+  coreide = 'coreide230.bpl';
+  {$ENDIF VER300}
   SLineIsElidedName = '@Editorcontrol@TCustomEditControl@LineIsElided$qqri';
 
 function LineIsElided(Self: TObject; LineNum: Integer): Boolean; external coreide name SLineIsElidedName;

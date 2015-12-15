@@ -114,6 +114,7 @@ uses
   GitClientProgress in '..\gitide\GitClientProgress.pas' {GitProgressDialog},
   GitIDEColors in '..\gitide\GitIDEColors.pas',
   GitIDERevert in '..\gitide\GitIDERevert.pas',
+  git2 in '..\gitide\git2.pas',
   VerInsAddInOptionsFrame in '..\verinsmisc\VerInsAddInOptionsFrame.pas' {frmVerInsOptions: TFrame},
   VerInsIDEAddInOptions in '..\verinsmisc\VerInsIDEAddInOptions.pas',
   DiffUnit in '..\liveblame\textdiff\DiffUnit.pas',

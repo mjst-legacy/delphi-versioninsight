@@ -27,7 +27,7 @@ unit GitClient;
 interface
 
 uses
-  Windows, SysUtils, Classes, Generics.Collections, IOUtils;
+  Windows, SysUtils, Classes, Generics.Defaults, Generics.Collections, IOUtils;
 
 type
   TGitItem = class;
@@ -127,6 +127,8 @@ type
     FList: TList<TPair<string, TGitStatus>>;
     function GetCount: Integer;
     function GetItems(AIndex: Integer): TPair<string, TGitStatus>;
+    procedure LoadGitExe;
+    procedure LoadLibGit;
   public
     constructor Create(AGitClient: TGitClient);
     destructor Destroy; override;
@@ -146,6 +148,7 @@ type
     FCancel: Boolean;
     FCloneCallBack: TGitCloneCallBack;
     FGitExecutable: string;
+    FLibGitLoaded: Boolean;
     FLastCommitInfoBranch: string;
     FLastCommitInfoHash: string;
     procedure ExecuteTextHandler(const Text: string);
@@ -156,6 +159,7 @@ type
     function Commit(AFileList: TStringList; const AMessage: string; const AUser: string = ''): TGitError;
     function FindRepositoryRoot(const APath: string): string;
     function GetModifications(const APath: string; ACallBack: TGitStatusCallback): Boolean;
+    procedure InitializeLibGit;
     function IsPathInWorkingCopy(const APath: string): Boolean;
     function IsVersioned(const AFileName: string): Boolean;
     function Revert(const AFileName: string): Boolean;
@@ -168,6 +172,9 @@ type
 function UTCToTzDateTime(Value: TDateTime): TDateTime;
 
 implementation
+
+uses
+  git2;
 
 //--- JclBase and JclSysUtils --------------------------------------------------
 const
@@ -879,6 +886,15 @@ begin
 end;
 
 procedure TGitStatusList.Load;
+begin
+  FGitClient.InitializeLibGit;
+  if Git2LibLoaded then
+    LoadLibGit
+  else
+    LoadGitExe;
+end;
+
+procedure TGitStatusList.LoadGitExe;
 const
   MaxItemsPerDir = 10;
 var
@@ -1074,6 +1090,94 @@ begin
   end;
 end;
 
+procedure TGitStatusList.LoadLibGit;
+type
+  TFilesSortedPair = TPair<string, Integer>;
+var
+  I, Res: Integer;
+  S, CurrentDir, LastDir, RepoDir, RelativeFile: string;
+  Repo: Pgit_repository;
+  StatusFlags: UInt;
+  Pair: TPair<string, TGitStatus>;
+  FilesSortedPair: TFilesSortedPair;
+  FilesSorted: TList<TFilesSortedPair>;
+  RepoOpen: Boolean;
+  DiscoverBuffer: Tgit_buf;
+begin
+  Repo := nil;
+  RepoOpen := False;
+  RepoDir := '';
+  FilesSorted := TList<TFilesSortedPair>.Create;
+  try
+    for I := 0 to Count - 1 do
+    begin
+      FilesSortedPair.Key := Items[I].Key;
+      FilesSortedPair.Value := I;
+      FilesSorted.Add(FilesSortedPair);
+    end;
+    if FilesSorted.Count > 1 then
+      FilesSorted.Sort(TComparer<TFilesSortedPair>.Construct(function(const Left, Right: TFilesSortedPair): Integer
+        begin
+          Result := CompareText(Left.Key, Right.Key);
+        end));
+    LastDir := '';
+    for I := 0 to FilesSorted.Count - 1 do
+    begin
+      S := StringReplace(FilesSorted[I].Key, '\', '/', [rfReplaceAll]);
+      CurrentDir := ExtractFilePath(FilesSorted[I].Key);
+      if LastDir <> CurrentDir then
+      begin
+        LastDir := CurrentDir;
+        if RepoOpen then
+        begin
+          git_repository_free(Repo);
+          RepoOpen := False;
+          Repo := nil;
+        end;
+        RepoOpen := False;
+        DiscoverBuffer := GIT_BUF_INIT_CONST(nil, 0);
+        try
+          Res := git_repository_discover(@DiscoverBuffer, PAnsiChar(UTF8Encode(S)), 0, nil);
+          if Res = 0 then
+            RepoDir := UTF8ToString(DiscoverBuffer.Ptr)
+          else
+            RepoDir := '';
+        finally
+          git_buf_free(@DiscoverBuffer);
+        end;
+        if RepoDir <> '' then
+        begin
+          Res := git_repository_open(Repo, PAnsiChar(UTF8Encode(RepoDir)));
+          if Res = 0 then
+            RepoOpen := True;
+        end;
+      end;
+      if RepoOpen then
+      begin
+        RelativeFile := S;
+        Delete(RelativeFile, 1, Length(RepoDir) - 5);
+        if git_status_file(StatusFlags, Repo, PAnsiChar(UTF8Encode(RelativeFile))) = 0 then
+        begin
+          FilesSortedPair := FilesSorted[I];
+          Pair := Items[FilesSortedPair.Value];
+          if StatusFlags = GIT_STATUS_CURRENT then
+            Pair.Value := gsNormal
+          else
+          if StatusFlags and GIT_STATUS_WT_MODIFIED <> 0 then
+            Pair.Value := gsModified
+          else
+            Pair.Value := gsUnknown;
+          FList[FilesSortedPair.Value] := Pair;
+        end;
+      end;
+    end;
+  finally
+    FilesSorted.Free;
+    if RepoOpen then
+      git_repository_free(Repo);
+  end;
+end;
+
 { TGitClient }
 
 function TGitClient.Commit(AFileList: TStringList; const AMessage: string; const AUser: string = ''): TGitError;
@@ -1266,6 +1370,19 @@ begin
       finally
         OutputStrings.Free;
       end;
+    end;
+  end;
+end;
+
+procedure TGitClient.InitializeLibGit;
+begin
+  if not FLibGitLoaded then
+  begin
+    FLibGitLoaded := True;
+    if not Git2LibLoaded then
+    begin
+      if LoadGit2Lib then
+        git_libgit2_init;
     end;
   end;
 end;

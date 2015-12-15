@@ -448,12 +448,20 @@ type
     FLatestRevisionContent: RawByteString;
     FSummary: TJVCSLineHistorySummary;
     FLatestRevision: TJVCSLineHistoryRevision;
+    FColorList: TStringList;
+    FModificationColorFile: TColor;
+    FModificationColorBuffer: TColor;
+    FSettings: TJVCSLineHistorySettings;
+    function GetNextColor: TColor;
   public
     constructor Create(const AFileName: string); reintroduce;
     destructor Destroy; override;
     procedure BuildLineHistory(ASettings: TJVCSLineHistorySettings); virtual; abstract;
+    function GetRevisionColor(ALineHistoryRevision: TJVCSLineHistoryRevision): TRevisionColor;
     procedure Load; virtual; abstract;
+    function UpdateModificationColors: Boolean;
     procedure UpdateSettings(ASettings: TJVCSLineHistorySettings);
+    property Settings: TJVCSLineHistorySettings read FSettings write FSettings;
   end;
 
   {$IFDEF SVNINTERNAL}
@@ -527,7 +535,6 @@ type
     FUserRectX1: Integer;
     FUserRectX2: Integer;
     FSettings: TJVCSLineHistorySettings;
-    FColorList: TStringList;
     FInstalledHook: Boolean;
     FPainting: Boolean;
     FRevisionRectangles: TRevisionRectangleList;
@@ -547,17 +554,13 @@ type
     FConfigMenuItem: TMenuItem;
     FShowInfoFormMenuItem: TMenuItem;
     FLastPresetTimeStamp: TDateTime;
-    FModificationColorFile: TColor;
-    FModificationColorBuffer: TColor;
     procedure CheckInstallHook;
     procedure UnInstallHooks;
     procedure CreatePopupMenu;
     procedure BuildLineHistory;
     procedure UpdateLineHistory(ASourceEditor: IOTASourceEditor);
     procedure HandleDiffThreadReady(Sender: TObject);
-    function DoGetRevisionColor(ALineHistoryRevision: TJVCSLineHistoryRevision): TRevisionColor;
     function GetLineColor(ALine: Integer; AColorIndex: Integer): TColor;
-    function GetNextColor: TColor;
     procedure UpdateGutterWidth;
     procedure OnTimer(Sender: TObject);
     procedure OnCheckTimer(Sender: TObject);
@@ -578,7 +581,6 @@ type
     procedure HandlePopupMenu(Sender: TObject);
     procedure HandlePopupMenuPopup(Sender: TObject);
     procedure SetPreset(APresetID: Integer);
-    function UpdateModificationColors: Boolean;
     procedure InstallLineChangeHook;
     procedure ChangeLineEvent(Sender: TObject);
   protected
@@ -968,10 +970,13 @@ begin
   FBlameCounter := 0;
   FSummary := TJVCSLineHistorySummary.Create;
   FLatestRevision := nil;
+  FColorList := TStringList.Create;
+  FColorList.AddObject('', TObject(GetNextColor));
 end;
 
 destructor TCustomLiveBlameData.Destroy;
 begin
+  FColorList.Free;
   FSummary.Free;
   FDeletedLines.Free;
   FRevisionColorList.Free;
@@ -1647,7 +1652,7 @@ begin
       end;
       LiveBlameInformation.AddRevisions(FLiveBlameData.FRevisions);
       for I := 0 to Pred(FLiveBlameData.FRevisions.Count) do
-        DoGetRevisionColor(FLiveBlameData.FRevisions[I]);
+        FLiveBlameData.GetRevisionColor(FLiveBlameData.FRevisions[I]);
       LiveBlameInformation.AddRevisionColorsMapped(FLiveBlameData.FRevisionColorList);
       LiveBlameInformation.SetLineRevisionMapped(Revision);
       LiveBlameInformation.LineNo := Line;
@@ -1727,14 +1732,13 @@ begin
   FSettings.DateEndColor := clRed;
   FSettings.RevisionStartColor := $F4F4F4;
   FSettings.RevisionEndColor := clAqua;
+  FLiveBlameData.Settings := FSettings;
 
   User := FSettings.UserSettingsList.Add;
   User.UserName := 'uschuster';
   User.VisibleName := 'US';
   User.Color := clLime;//this is optional
 
-  FColorList := TStringList.Create;
-  FColorList.AddObject('', TObject(GetNextColor));
   FRevisionRectangles := TRevisionRectangleList.Create;
   FRevisionHintRectangles := TRevisionRectangleList.Create;
   FDeletedLinesHintTriangles := TDeletedLinesTriangleList.Create;
@@ -1749,7 +1753,7 @@ begin
   if GetPresets <> nil then
     SetPreset(GetPresets.SelectedID);
   CreatePopupMenu;
-  UpdateModificationColors;
+  FLiveBlameData.UpdateModificationColors;
   Visible := False;
 end;
 
@@ -1780,7 +1784,6 @@ begin
   FDeletedLinesHintTriangles.Free;
   FRevisionHintRectangles.Free;
   FRevisionRectangles.Free;
-  FColorList.Free;
   FSettings.Free;
   //FLiveBlameData.Free;
   FCheckShowTimer.Enabled := False;
@@ -1805,23 +1808,23 @@ begin
     StartRGB[2] + Trunc((GetBValue(AEndColor) - StartRGB[2]) * AFactor));
 end;
 
-function TLiveBlameEditorPanel.DoGetRevisionColor(ALineHistoryRevision: TJVCSLineHistoryRevision): TRevisionColor;
+function TCustomLiveBlameData.GetRevisionColor(ALineHistoryRevision: TJVCSLineHistoryRevision): TRevisionColor;
 var
   DC, DL: Double;
   I, Idx, IdxS: Integer;
   MinDate, MaxDate: TDateTime;
 begin
   Result := nil;
-  for I := 0 to Pred(FLiveBlameData.FRevisionColorList.Count) do
-    if TRevisionColor(FLiveBlameData.FRevisionColorList[I]).LineHistoryRevision = ALineHistoryRevision then
+  for I := 0 to Pred(FRevisionColorList.Count) do
+    if TRevisionColor(FRevisionColorList[I]).LineHistoryRevision = ALineHistoryRevision then
     begin
-      Result := TRevisionColor(FLiveBlameData.FRevisionColorList[I]);
+      Result := TRevisionColor(FRevisionColorList[I]);
       Break;
     end;
   if not Assigned(Result) and (ALineHistoryRevision.RevisionStr = 'Buff') then
   begin
-    FLiveBlameData.FRevisionColorList.Add(TRevisionColor.Create(ALineHistoryRevision));
-    Result := TRevisionColor(FLiveBlameData.FRevisionColorList.Last);
+    FRevisionColorList.Add(TRevisionColor.Create(ALineHistoryRevision));
+    Result := TRevisionColor(FRevisionColorList.Last);
     Result.DateColor := FModificationColorBuffer;
     Result.RevisionColor := FModificationColorBuffer;
     Result.UserColor := FModificationColorBuffer;
@@ -1829,8 +1832,8 @@ begin
   else
   if not Assigned(Result) and (ALineHistoryRevision.RevisionStr = 'File') then
   begin
-    FLiveBlameData.FRevisionColorList.Add(TRevisionColor.Create(ALineHistoryRevision));
-    Result := TRevisionColor(FLiveBlameData.FRevisionColorList.Last);
+    FRevisionColorList.Add(TRevisionColor.Create(ALineHistoryRevision));
+    Result := TRevisionColor(FRevisionColorList.Last);
     Result.DateColor := FModificationColorFile;
     Result.RevisionColor := FModificationColorFile;
     Result.UserColor := FModificationColorFile;
@@ -1838,15 +1841,15 @@ begin
   else
   if not Assigned(Result) then
   begin
-    FLiveBlameData.FRevisionColorList.Add(TRevisionColor.Create(ALineHistoryRevision));
-    Result := TRevisionColor(FLiveBlameData.FRevisionColorList.Last);
+    FRevisionColorList.Add(TRevisionColor.Create(ALineHistoryRevision));
+    Result := TRevisionColor(FRevisionColorList.Last);
 
-    DL := FLiveBlameData.FRevisions.Count;
+    DL := FRevisions.Count;
     if DL > 0 then
     begin
       DC := 0;
-      for I := 0 to Pred(FLiveBlameData.FRevisions.Count) do
-        if FLiveBlameData.FRevisions[I] = ALineHistoryRevision then
+      for I := 0 to Pred(FRevisions.Count) do
+        if FRevisions[I] = ALineHistoryRevision then
         begin
           DC := I + 1;
           Break;
@@ -1862,12 +1865,12 @@ begin
 
     MinDate := MaxInt;
     MaxDate := 0;
-    for I := 0 to Pred(FLiveBlameData.FRevisions.Count) do
+    for I := 0 to Pred(FRevisions.Count) do
     begin
-      if FLiveBlameData.FRevisions[I].Date < MinDate then
-        MinDate := FLiveBlameData.FRevisions[I].Date;
-      if FLiveBlameData.FRevisions[I].Date > MaxDate then
-        MaxDate := FLiveBlameData.FRevisions[I].Date;
+      if FRevisions[I].Date < MinDate then
+        MinDate := FRevisions[I].Date;
+      if FRevisions[I].Date > MaxDate then
+        MaxDate := FRevisions[I].Date;
     end;
     DC := 0;
     DL := 0;
@@ -2098,9 +2101,9 @@ begin
   if AColorIndex in [1, 2, 3] then
   begin
     if (FLiveBlameData.FLines.Count > ALine) then
-      RevisionColor := DoGetRevisionColor(FLiveBlameData.FLines[ALine])
+      RevisionColor := FLiveBlameData.GetRevisionColor(FLiveBlameData.FLines[ALine])
     else
-      RevisionColor := DoGetRevisionColor(nil);
+      RevisionColor := FLiveBlameData.GetRevisionColor(nil);
     if Assigned(RevisionColor) then
     begin
       case AColorIndex of
@@ -2112,7 +2115,7 @@ begin
   end;
 end;
 
-function TLiveBlameEditorPanel.GetNextColor: TColor;
+function TCustomLiveBlameData.GetNextColor: TColor;
 begin
   case (14 - FColorList.Count mod 15) of
     0: Result := RGB(128, 128, 128);
@@ -2413,8 +2416,8 @@ begin
     Idx := Presets.IndexOfID(APresetID);
     if Idx <> -1 then
     begin
-      FColorList.Clear;
-      FColorList.AddObject('', TObject(GetNextColor));
+      FLiveBlameData.FColorList.Clear;
+      FLiveBlameData.FColorList.AddObject('', TObject(FLiveBlameData.GetNextColor));
       FSettings.Assign(Presets[Idx].Settings);
       FLiveBlameData.UpdateSettings(FSettings);
       Presets.SelectedID := APresetID;
@@ -2443,7 +2446,7 @@ begin
     if Visible and not FLiveBlameData.FButtonDown and (GetKeyState(VK_SHIFT) < 0) then
       FLiveBlameData.FUpdateCheck := True;
     FLiveBlameData.FButtonDown := Visible;
-    if Visible and UpdateModificationColors then
+    if Visible and FLiveBlameData.UpdateModificationColors then
       for I := 0 to Pred(FLiveBlameDataList.Count) do
         FLiveBlameDataList[I].FRevisionColorList.Clear;
   end;
@@ -2486,6 +2489,7 @@ begin
           FLiveBlameDataList.Add(TLiveBlameData.Create(CurrentFileName));
           FLiveBlameData := FLiveBlameDataList.Last;
           FLiveBlameData.FPaintBox := FPaintBox;
+          FLiveBlameData.Settings := FSettings;
         end;
         FSpeedButton.Down := FLiveBlameData.FButtonDown;
         TAction(FSpeedButton.Action).Checked := FLiveBlameData.FButtonDown;
@@ -2990,7 +2994,7 @@ begin
   end;
 end;
 
-function TLiveBlameEditorPanel.UpdateModificationColors: Boolean;
+function TCustomLiveBlameData.UpdateModificationColors: Boolean;
 var
   OldColor: TColor;
 begin
@@ -3746,7 +3750,7 @@ type
     var
       RevisionColor: TRevisionColor;
     begin
-      RevisionColor := DoGetRevisionColor(AInfo);
+      RevisionColor := FLiveBlameData.GetRevisionColor(AInfo);
       case ABlockType of
         btRevision: Result := RevisionColor.RevisionColor;
         btDate: Result := RevisionColor.DateColor;

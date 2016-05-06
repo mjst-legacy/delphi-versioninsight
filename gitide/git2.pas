@@ -14,7 +14,7 @@
 { The Original Code is git2.pas.                                               }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2015 Uwe Schuster.          }
+{ Portions created by Uwe Schuster are Copyright © 2015 - 2016 Uwe Schuster.   }
 { All Rights Reserved.                                                         }
 {                                                                              }
 { Contributors:                                                                }

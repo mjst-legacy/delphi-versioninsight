@@ -1,4 +1,4 @@
-//Copyright (c) 2011 - 2014 Uwe Schuster
+//Copyright (c) 2011 - 2016 Uwe Schuster
 unit ToolsProAPI;
 
 interface

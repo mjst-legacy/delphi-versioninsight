@@ -128,7 +128,8 @@ uses
   VerInsIDEUtils in '..\verinsmisc\VerInsIDEUtils.pas',
   VerInsIDEMacros in '..\verinsmisc\VerInsIDEMacros.pas',
   VerInsLiveBlameTypes in '..\liveblame\VerInsLiveBlameTypes.pas',
-  VerInsIDEDockInfo in '..\liveblame\VerInsIDEDockInfo.pas' {fmLiveBlameInfo};
+  VerInsIDEDockInfo in '..\liveblame\VerInsIDEDockInfo.pas' {fmLiveBlameInfo},
+  VerInsIDEBlameDesignerOverlayForm in '..\liveblame\VerInsIDEBlameDesignerOverlayForm.pas' {fmLiveBlameDesignerOverlay};
 
 {$R *.res}
 

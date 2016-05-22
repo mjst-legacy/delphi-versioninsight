@@ -4,7 +4,7 @@ unit ToolsProAPI;
 interface
 
 uses
-  ToolsAPI, DesignIntf, FileHistoryAPI, Classes, Graphics, ImgList;
+  ToolsAPI, DesignIntf, FileHistoryAPI, Classes, Graphics, ImgList, ActiveX;
 
 const
   { Default file state value indexes }
@@ -263,6 +263,35 @@ type
     { AddImages takes all the images from the given image list and adds them to the
       version control services imagelist.  Indent is not yet supported! }
     function AddImages(AImages: TCustomImageList; const Ident: string): Integer;
+  end;
+
+  IOTAProStreamingDiagnosticsComponent = interface
+  ['{65511405-211A-45F9-9325-019682803D6C}']
+    //TODO: comments
+    function GetComponentClassName: string;
+    function GetComponentName: string;
+    function GetEndLine: Integer;
+    function GetStartLine: Integer;
+    function GetSubComponentCount: Integer;
+    function GetSubComponents(AIndex: Integer): IOTAProStreamingDiagnosticsComponent;
+    function GetSubEndLine: Integer;
+    function GetSubStartLine: Integer;
+
+    property ComponentClassName: string read GetComponentClassName;
+    property ComponentName: string read GetComponentName;
+    property EndLine: Integer read GetEndLine;
+    property StartLine: Integer read GetStartLine;
+    property SubComponentCount: Integer read GetSubComponentCount;
+    property SubComponents[AIndex: Integer]: IOTAProStreamingDiagnosticsComponent read GetSubComponents;
+    property SubEndLine: Integer read GetSubEndLine;
+    property SubStartLine: Integer read GetSubStartLine;
+  end;
+
+  { Query IProIDEServices for IOTAProStreamingDiagnosticsServices }
+  IOTAProStreamingDiagnosticsServices = interface
+  ['{3B9E68EA-46D0-4A95-A503-518D4C8DE423}']
+    { Returns an IOTAProStreamingDiagnosticsComponent tree structure for the given DFM stream }
+    function StreamToStreamingComponent(const AStream: IStream): IOTAProStreamingDiagnosticsComponent;
   end;
 
   IProIDEServices = interface(IBorlandIDEServices)

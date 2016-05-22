@@ -33,7 +33,7 @@ uses
   DiffUnit, HashUnit;
 
 type
-  TLiveBlameWizard = class(TInterfacedObject, IOTAWizard, IOTANotifier, IOTAEditorNotifier)
+  TLiveBlameWizard = class(TInterfacedObject, IOTAWizard, IOTANotifier, IOTAEditorNotifier{$IFDEF TOOLSPROAPI}, IOTAMenuWizard{$ENDIF})
   private
     NotifierIndex: Integer;
     NotifierIndex2: Integer;
@@ -50,6 +50,9 @@ type
     function GetName: string;
     function GetState: TWizardState;
     procedure Execute;
+
+    { IOTAMenuWizard }
+    function GetMenuText: string;
 
     { IOTAEditorNotifier }
     procedure ViewNotification(const View: IOTAEditView; Operation: TOperation);
@@ -71,7 +74,7 @@ uses
   SvnIDEClient, SvnClient, SvnIDETypes,
   {$ENDIF SVNINTERNAL}
   {$IFDEF TOOLSPROAPI}
-  ToolsProAPI,
+  ToolsProAPI, VerInsIDEBlameDesignerOverlayForm,
   {$ENDIF TOOLSPROAPI}
   VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings, Registry, VerInsLiveBlameTypes,
   Rtti, Events, VerInsIDEDockInfo;
@@ -4202,6 +4205,11 @@ begin
   Result := 'USc.Live Blame';
 end;
 
+function TLiveBlameWizard.GetMenuText: string;
+begin
+  Result := 'VCL Designer Live Blame';
+end;
+
 function TLiveBlameWizard.GetName: string;
 begin
   Result := 'Live Blame';
@@ -4219,13 +4227,230 @@ procedure TLiveBlameWizard.Destroyed;
 begin
 end;
 
+{$IFDEF TOOLSPROAPI}
+var
+  FormDesignerBlameVisible: Boolean = False;
+
+procedure ShowFormDesignerBlame;
+
+  function GetFormDesignerComponent: TComponent;
+  var
+    tempComponent: TComponent;
+  begin
+    tempComponent := Application.FindComponent('EditWindow_0');
+    if Assigned(tempComponent) then
+      tempComponent := tempComponent.FindComponent('EditorFormDesigner');
+    Result := tempComponent;
+  end;
+
+  procedure WalkCompos(AComp: IOTAProStreamingDiagnosticsComponent; ALiveBlameData: TLiveBlameData; ASL: TStringList; AIdent: string;
+    AComponentInfoList: TLiveBlameComponentInfoList);
+  var
+    I, J, RevisionIndex, HighestRevisionIndex: Integer;
+    Rev: TJVCSLineHistoryRevision;
+    CI: TLiveBlameComponentInfo;
+    Col: TRevisionColor;
+  begin
+    HighestRevisionIndex := -1;
+    for I := AComp.StartLine to AComp.EndLine do
+      if (AComp.SubStartLine = 0) or (I < AComp.SubStartLine) or (I > AComp.SubEndLine) then
+      begin
+        Rev := ALiveBlameData.FLines[I - 1];
+        RevisionIndex := -1;
+        if Assigned(Rev) then
+          for J := 0 to ALiveBlameData.FRevisions.Count - 1 do
+            if ALiveBlameData.FRevisions[J] = Rev then
+            begin
+              RevisionIndex := J;
+              Break;
+            end;
+        if (RevisionIndex <> -1) and (RevisionIndex > HighestRevisionIndex) then
+          HighestRevisionIndex := RevisionIndex;
+      end;
+
+    if HighestRevisionIndex <> -1 then
+    begin
+      CI := AComponentInfoList.GetInfoByName(AComp.ComponentName);
+      if Assigned(CI) then
+      begin
+        CI.Revision := ALiveBlameData.FRevisions[HighestRevisionIndex];
+        Col := nil;
+        for J := 0 to ALiveBlameData.FRevisionColorList.Count - 1 do
+          if TRevisionColor(ALiveBlameData.FRevisionColorList[J]).LineHistoryRevision = CI.Revision then
+          begin
+            Col := TRevisionColor(ALiveBlameData.FRevisionColorList[J]);
+            Break;
+          end;
+        if Assigned(Col) then
+          CI.Color := Col.RevisionColor
+        else
+        begin
+          CI.Color := clNone;
+          if HighestRevisionIndex = 0 then
+            CI.Color := clYellow
+          else
+          if HighestRevisionIndex = 1 then
+            CI.Color := clLime
+          else
+          if HighestRevisionIndex = 2 then
+            CI.Color := clAqua
+          else
+            CI.Color := clRed;
+        end;
+      end;
+    end;
+
+    if Assigned(ASL) then
+      ASL.Add(Format('%s%s: %s [%d - %d] [Sub: %d - %d] (BestIdx: %d)',
+        [AIdent, AComp.ComponentName, AComp.ComponentClassName, AComp.StartLine, AComp.EndLine,
+        AComp.SubStartLine, AComp.SubEndLine, HighestRevisionIndex]));
+    for I := 0 to Pred(AComp.SubComponentCount) do
+      WalkCompos(AComp.SubComponents[I], ALiveBlameData, ASL, AIdent + '  ', AComponentInfoList);
+  end;
+
+  procedure WalkRealCompos(C: TControl; AComponentInfoList: TLiveBlameComponentInfoList);
+  var
+    I: Integer;
+    CW: TWinControl absolute C;
+  begin
+    if AComponentInfoList.GetInfo(C) = nil then
+      AComponentInfoList.Add(C);
+    if C is TWinControl then
+      for I := 0 to CW.ControlCount - 1 do
+        WalkRealCompos(CW.Controls[I], AComponentInfoList);
+  end;
+
+var
+  GenericLiveBlameData: TGenericLiveBlameData;
+  I: Integer;
+  Settings: TJVCSLineHistorySettings;
+  PaintBox: TLiveBlamePaintBox;
+
+  CurrentFileName: string;
+  ModuleServices: IOTAModuleServices;
+  Module: IOTAModule;
+  Editor: IOTAEditor;
+  FormEditor: IOTAFormEditor;
+  DiagnosticComponent: IOTAProStreamingDiagnosticsComponent;
+  RealComponent: TWinControl;
+  ComponentInfoList: TLiveBlameComponentInfoList;
+  FormDesigner: TComponent;
+  FormDesignerControl: TControl;
+  P: TPoint;
+  StreamingServices: IOTAProStreamingDiagnosticsServices;
+  MS: TMemoryStream;
+  SA: TStreamAdapter;
+begin
+  if FormDesignerBlameVisible then
+  begin
+    fmLiveBlameDesignerOverlay.Hide;
+    FormDesignerBlameVisible := False;
+  end
+  else
+  if Supports(BorlandIDEServices, IOTAProStreamingDiagnosticsServices, StreamingServices) then
+  begin
+    ModuleServices := BorlandIDEServices as IOTAModuleServices;
+    if Assigned(ModuleServices) then
+    begin
+      Module := ModuleServices.CurrentModule;
+      CurrentFileName := Module.CurrentEditor.FileName;
+    end
+    else
+      CurrentFileName := '';
+    Module := (BorlandIDEServices as IOTAModuleServices).CurrentModule;
+    FormEditor := nil;
+    CurrentFileName := '';
+    for I := 0 to Pred(Module.GetModuleFileCount) do
+    begin
+      Editor := Module.GetModuleFileEditor(I);
+      if Assigned(Editor) and (Editor.QueryInterface(IOTAFormEditor, FormEditor) = S_OK) then
+      begin
+        CurrentFileName := FormEditor.FileName;
+        Break;
+      end;
+    end;
+    if Assigned(FormEditor) and (TObject(FormEditor.GetRootComponent.GetComponentHandle) is TWinControl) and
+      (CurrentFileName <> '') and SameText(ExtractFileExt(CurrentFileName), '.dfm') then
+    begin
+      RealComponent := TWinControl(TObject(FormEditor.GetRootComponent.GetComponentHandle));
+      GenericLiveBlameData := TLiveBlameData.Create(CurrentFileName);
+      PaintBox := TLiveBlamePaintBox.Create(nil);
+      GenericLiveBlameData.FPaintBox := PaintBox;
+      GenericLiveBlameData.Load;
+      I := 0;
+      while not GenericLiveBlameData.FBlameInfoReady do
+      begin
+        Application.ProcessMessages;
+        Sleep(100);
+        if I = 100 then
+          Break;
+      end;
+      Settings := TJVCSLineHistorySettings.Create;
+      GenericLiveBlameData.Settings := Settings;
+      GenericLiveBlameData.BuildLineHistory(Settings);
+
+      for I := 0 to Pred(GenericLiveBlameData.FRevisions.Count) do
+        GenericLiveBlameData.GetRevisionColor(GenericLiveBlameData.FRevisions[I]);
+
+      if Assigned(fmLiveBlameDesignerOverlay) then
+        fmLiveBlameDesignerOverlay.InfoList := nil;
+      ComponentInfoList := TLiveBlameComponentInfoList.Create;
+
+      MS := TMemoryStream.Create;
+      SA := TStreamAdapter.Create(MS, soOwned);
+      MS.LoadFromFile(CurrentFileName);
+      DiagnosticComponent := StreamingServices.StreamToStreamingComponent(SA);
+      try
+        if Assigned(DiagnosticComponent) then
+        begin
+          FormDesignerBlameVisible := True;
+
+          WalkRealCompos(RealComponent, ComponentInfoList);
+          WalkCompos(DiagnosticComponent, GenericLiveBlameData, nil, '', ComponentInfoList);
+
+          FormDesigner := GetFormDesignerComponent;
+          if not Assigned(fmLiveBlameDesignerOverlay) then
+            fmLiveBlameDesignerOverlay := TfmLiveBlameDesignerOverlay.Create(Application);
+          fmLiveBlameDesignerOverlay.InfoList := ComponentInfoList;
+          fmLiveBlameDesignerOverlay.Show;
+          if FormDesigner is TControl then
+          begin
+            FormDesignerControl := TControl(FormDesigner);
+            P := Point(0, 0);
+            P := FormDesignerControl.ClientToScreen(P);
+            fmLiveBlameDesignerOverlay.Left := P.X;
+            fmLiveBlameDesignerOverlay.Top := P.Y;
+            fmLiveBlameDesignerOverlay.Width := FormDesignerControl.Width;
+            fmLiveBlameDesignerOverlay.Height := FormDesignerControl.Height;
+          end;
+        end;
+      finally
+        DiagnosticComponent := nil;
+      end;
+    end;
+  end;
+end;
+{$ENDIF TOOLSPROAPI}
+
 procedure TLiveBlameWizard.Execute;
 begin
+  {$IFDEF TOOLSPROAPI}
+  ShowFormDesignerBlame;
+  {$ENDIF TOOLSPROAPI}
 end;
 
 function TLiveBlameWizard.GetState: TWizardState;
 begin
-  Result := [];
+  {$IFDEF TOOLSPROAPI}
+  if Supports(BorlandIDEServices, IOTAProStreamingDiagnosticsServices) then
+  begin
+    Result := [wsEnabled];
+    if FormDesignerBlameVisible then
+      Result := Result + [wsChecked];
+  end
+  else
+  {$ENDIF TOOLSPROAPI}
+    Result := [];
 end;
 
 procedure TLiveBlameWizard.Modified;

@@ -14,7 +14,7 @@
 { The Original Code is VerInsIDEUtils.pas.                                     }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2011 - 2016 Uwe Schuster.   }
+{ Portions created by Uwe Schuster are Copyright © 2011 - 2017 Uwe Schuster.   }
 { All Rights Reserved.                                                         }
 {                                                                              }
 { Contributors:                                                                }

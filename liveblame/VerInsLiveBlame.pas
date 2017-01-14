@@ -3305,7 +3305,7 @@ end;
 
 procedure AddBlameButton(EditorPanel: TLiveBlameEditorPanel);
 var
-  tempComponent, P, C, ImgList: TComponent;
+  tempComponent, P, C, ImgList, StatusBar: TComponent;
   BlameButtonPanel: TPanel;
   SpeedButton: TSpeedButton;
   ActionLst: TActionList;
@@ -3316,6 +3316,7 @@ begin
   if Assigned(tempComponent) then
   begin
     P := tempComponent.FindComponent('StatusBar');
+    StatusBar := P;
     X := 0;
     if Assigned(P) then
     begin
@@ -3346,7 +3347,10 @@ begin
         BlameButtonPanel.Parent := TWinControl(tempComponent);
         BlameButtonPanel.Name := 'BlameButtonPanel';
         BlameButtonPanel.Left := X;
-        BlameButtonPanel.Top := 1;
+        if (StatusBar is TControl)  then
+          BlameButtonPanel.Top := TControl(StatusBar).Top + 2
+        else
+          BlameButtonPanel.Top := 1;
         BlameButtonPanel.Height := 20;
         BlameButtonPanel.Visible := True;
         BlameButtonPanel.Caption := '';

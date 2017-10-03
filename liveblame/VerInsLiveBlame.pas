@@ -113,6 +113,7 @@ begin
   Result := (BorlandIDEServices as IOTAWizardServices).AddWizard(TLiveBlameWizard.Create);
   SetPresetsKey((BorlandIDEServices as IOTAServices).GetBaseRegistryKey + '\VersionInsight\Blame');
   RegisterAddInOptions;
+  OutputDebugString(PChar('----------- LIVEBLAME registered -----------'));
 end;
 
 {$IFNDEF DEBUG}
@@ -3344,13 +3345,16 @@ begin
         BlameButtonPanel := TPanel.Create(tempComponent);
         BlameButtonPanel.Align := alNone;
         BlameButtonPanel.Width := 32;
-        BlameButtonPanel.Parent := TWinControl(tempComponent);
         BlameButtonPanel.Name := 'BlameButtonPanel';
         BlameButtonPanel.Left := X;
-        if (StatusBar is TControl)  then
-          BlameButtonPanel.Top := TControl(StatusBar).Top + 2
-        else
+        if (StatusBar is TWinControl) then begin
+          BlameButtonPanel.Parent := TWinControl(StatusBar);
+          BlameButtonPanel.Top := TWinControl(StatusBar).Top + 2;
+        end
+        else begin
+          BlameButtonPanel.Parent := TWinControl(tempComponent);
           BlameButtonPanel.Top := 1;
+        end;
         BlameButtonPanel.Height := 20;
         BlameButtonPanel.Visible := True;
         BlameButtonPanel.Caption := '';

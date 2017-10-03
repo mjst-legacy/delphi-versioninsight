@@ -1,3 +1,9 @@
 *.res
 *.stat
 *.local
+*.dcu
+*.dsk
+*.identcache
+__history/
+*.dll
+*.~*

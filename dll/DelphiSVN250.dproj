@@ -3,7 +3,7 @@
         <ProjectGuid>{2C460144-3B73-404F-9414-FA99D64619E3}</ProjectGuid>
         <MainSource>DelphiSVN250.dpr</MainSource>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">Release</Config>
         <TargetedPlatforms>1</TargetedPlatforms>
         <AppType>Library</AppType>
         <FrameworkType>None</FrameworkType>

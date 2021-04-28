@@ -3,7 +3,7 @@
         <ProjectGuid>{B66C7435-BC65-4805-AC54-FF18F1668A25}</ProjectGuid>
     </PropertyGroup>
     <ItemGroup>
-        <Projects Include="dll\DelphiSVN260.dproj">
+        <Projects Include="dll\DelphiSVN270.dproj">
             <Dependencies/>
         </Projects>
     </ItemGroup>
@@ -14,23 +14,23 @@
             <Default.Personality/>
         </BorlandProject>
     </ProjectExtensions>
-    <Target Name="DelphiSVN260">
-        <MSBuild Projects="dll\DelphiSVN260.dproj"/>
+    <Target Name="DelphiSVN270">
+        <MSBuild Projects="dll\DelphiSVN270.dproj"/>
     </Target>
-    <Target Name="DelphiSVN260:Clean">
-        <MSBuild Projects="dll\DelphiSVN260.dproj" Targets="Clean"/>
+    <Target Name="DelphiSVN270:Clean">
+        <MSBuild Projects="dll\DelphiSVN270.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="DelphiSVN260:Make">
-        <MSBuild Projects="dll\DelphiSVN260.dproj" Targets="Make"/>
+    <Target Name="DelphiSVN270:Make">
+        <MSBuild Projects="dll\DelphiSVN270.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="DelphiSVN260"/>
+        <CallTarget Targets="DelphiSVN270"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="DelphiSVN260:Clean"/>
+        <CallTarget Targets="DelphiSVN270:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="DelphiSVN260:Make"/>
+        <CallTarget Targets="DelphiSVN270:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
